@@ -2528,18 +2528,239 @@ This decision can be expanded as the MVP evaluation framework matures.
 
 ---
 
-## OPEN-009 — MVP Accuracy Thresholds
+# DEC-059 — MVP Accuracy and Quality Thresholds
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** AI / QUANT / QUALITY
 
-Need to define measurable acceptance thresholds for:
+## Decision
 
-* Factual accuracy
-* Citation accuracy
-* Quantitative accuracy
-* Evidence grounding
-* Temporal correctness
-* Hallucination
+QuantMind will define measurable quality thresholds for the MVP before production release.
+
+Quality will be evaluated across separate dimensions rather than being reduced to a single overall score.
+
+The primary evaluation dimensions are:
+
+- Factual accuracy
+- Evidence grounding
+- Citation accuracy
+- Quantitative accuracy
+- Temporal correctness
+- Entity resolution
+- Hallucination
+- Missing-data behavior
+- Contradiction handling
+- Structured-output validity
+
+## Threshold Philosophy
+
+Thresholds must be:
+
+- Measurable
+- Reproducible
+- Based on the evaluation dataset
+- Appropriate to the specific evaluation category
+- Reviewed against real MVP requirements
+
+A single aggregate "AI accuracy score" must not be used as the sole release criterion.
+
+## Factual Accuracy
+
+The system should correctly represent supported financial facts in the evaluation dataset.
+
+Evaluation should distinguish between:
+
+- Correct facts
+- Incorrect facts
+- Unsupported claims
+- Misleading representations
+
+The final numerical release threshold will be established after the initial evaluation dataset and baseline system are available.
+
+## Evidence Grounding
+
+Important factual claims should be supported by relevant retrieved evidence when evidence is expected to be available.
+
+Evaluation should measure whether:
+
+- The evidence actually supports the claim
+- The evidence is relevant
+- The evidence is sufficiently specific
+- The system avoids unsupported conclusions
+
+## Citation Accuracy
+
+Citations should correctly identify the source associated with the claim.
+
+Evaluation should detect:
+
+- Incorrect sources
+- Irrelevant sources
+- Missing citations where required
+- Misattributed evidence
+- Claims that cannot be traced to the cited material
+
+## Quantitative Accuracy
+
+Production quantitative functions must satisfy independently verified numerical tests.
+
+Evaluation should measure:
+
+- Formula correctness
+- Input correctness
+- Unit correctness
+- Currency correctness
+- Period correctness
+- Numerical precision
+- Acceptable tolerance
+
+Quantitative functions should have explicit tolerances appropriate to the calculation rather than a generic percentage threshold.
+
+## Temporal Correctness
+
+Historical research must respect the information available at the relevant historical point.
+
+A historical evaluation case should be considered incorrect if the system uses information that was not available at the required cutoff.
+
+Temporal correctness is therefore treated as a critical correctness requirement rather than merely another quality metric.
+
+## Entity Resolution
+
+The system must correctly identify the intended:
+
+- Company
+- Security
+- Market
+- Geographic context
+- Relevant financial entity
+
+Ambiguous or unresolved entities should result in clarification or transparent uncertainty rather than an unsupported assumption.
+
+## Hallucination
+
+The system must minimize unsupported factual claims.
+
+Evaluation should specifically test whether the system:
+
+- Invents financial data
+- Invents sources
+- Invents citations
+- Invents company events
+- Invents quantitative results
+- Presents assumptions as facts
+
+Hallucination involving important financial facts should be treated as a release-blocking quality issue until resolved.
+
+## Missing Data
+
+When required information is unavailable, the system should:
+
+```text
+Identify Missing Data
+↓
+Determine Whether Analysis Can Continue
+↓
+Return Reliable Partial Result if Possible
+↓
+Explain Limitation
+
+The system must not fabricate missing information to complete an answer.
+
+Contradictory Sources
+
+When credible sources disagree, evaluation should verify that the system:
+
+Detects the disagreement where practical
+Considers relevant differences
+Preserves source context
+Avoids silently presenting an unresolved claim as certain
+Structured Output
+
+Internal AI outputs that use structured schemas must be validated before being passed to downstream systems.
+
+Invalid structured output should trigger:
+
+Retry
+Compatible fallback
+Safe failure
+Transparent limitation
+
+depending on the specific failure.
+
+Release Gate
+
+The MVP should not be considered production-ready solely because the application functions technically.
+
+Production readiness requires:
+
+Functional Correctness
++
+Data Reliability
++
+Evidence Grounding
++
+Quantitative Correctness
++
+Temporal Correctness
++
+Acceptable Hallucination Behavior
++
+Security Validation
++
+Evaluation Results
+
+The final numerical thresholds for applicable metrics must be established after the baseline evaluation dataset has been implemented and measured.
+
+Baseline and Regression Testing
+
+Once baseline results exist, every significant change to:
+
+AI models
+Prompts
+Retrieval
+Data providers
+Quantitative logic
+Verification
+Response composition
+
+should be evaluated against the established baseline.
+
+A change that materially degrades a critical metric must be investigated before release.
+
+Reasoning
+
+Financial intelligence requires different forms of correctness.
+
+For example, a numerical calculation can have a precise expected answer, while an analytical interpretation may have multiple acceptable formulations.
+
+Using one arbitrary score for every category would hide these differences.
+
+Separate evaluation dimensions provide more useful information for model selection, engineering decisions, and release readiness.
+
+Consequences
+
+The evaluation framework must support category-specific metrics and thresholds.
+
+The exact numerical thresholds will be recorded after the initial evaluation dataset and baseline measurements are available.
+
+Thresholds may be revised when new evidence or MVP validation justifies the change, but changes must be documented.
+
+Affected Documents
+brain.md
+docs/PRD.md
+docs/MVP-Scope.md
+docs/TRD.md
+docs/Data-Sources.md
+docs/App-Flow.md
+docs/Decision-Log.md
+Notes
+
+This decision intentionally does not establish arbitrary numerical thresholds before baseline measurements exist.
+
+The purpose is to establish the quality framework and release-gate philosophy first.
+
+Specific thresholds should be added as measurable decisions once the evaluation infrastructure produces sufficient baseline evidence.
 
 ---
 
