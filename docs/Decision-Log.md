@@ -1459,16 +1459,93 @@ Need to determine:
 
 ---
 
-## OPEN-004 — Authentication Provider
+# DEC-054 — Authentication Provider
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** TECHNOLOGY / SECURITY / PRIVACY
 
-Need to determine:
+## Decision
 
-* Authentication method
-* Session architecture
-* User persistence
-* Authorization model
+The QuantMind MVP will use:
+
+> **Supabase Auth**
+
+Supabase Auth will provide the initial authentication foundation while application authorization and product-specific access rules remain under QuantMind's backend/application architecture.
+
+## Authentication Responsibilities
+
+The authentication layer will support:
+
+- User registration
+- User sign-in
+- Session management
+- Secure authentication state
+- User identity
+- Password/account recovery where applicable
+- Authentication state required by the research application
+
+## Authorization
+
+Authentication and authorization are separate concerns.
+
+Supabase Auth establishes user identity.
+
+QuantMind's application/backend layer must determine whether an authenticated user is authorized to perform a specific action or access specific application resources.
+
+Authorization rules must not rely solely on frontend checks.
+
+## Reasoning
+
+Supabase Auth integrates naturally with the selected Supabase PostgreSQL infrastructure and reduces unnecessary authentication infrastructure during the MVP stage.
+
+Using a managed authentication system also allows the team to focus implementation effort on QuantMind's core financial-intelligence workflow.
+
+## Security Principles
+
+The implementation must:
+
+- Never store plaintext passwords
+- Never expose authentication secrets to the frontend
+- Validate authorization on the backend
+- Protect authenticated resources
+- Use secure session handling
+- Avoid placing sensitive credentials in source control
+- Follow appropriate security and privacy practices
+
+## Consequences
+
+Authentication-specific functionality should remain isolated from core research and intelligence modules.
+
+The application should use internal abstractions where practical so authentication implementation can be changed later without rewriting the entire product.
+
+Future enterprise requirements may introduce additional capabilities such as:
+
+- SSO
+- Organization accounts
+- Role-based access control
+- Team permissions
+- Audit logging
+- Enterprise identity providers
+
+These are not required for the initial MVP unless explicitly added to scope.
+
+## Affected Documents
+
+- brain.md
+- docs/PRD.md
+- docs/MVP-Scope.md
+- docs/TRD.md
+- docs/App-Flow.md
+- docs/Decision-Log.md
+
+## Notes
+
+This decision establishes Supabase Auth for the MVP.
+
+It does not finalize the complete enterprise identity architecture.
+
+Future authentication requirements may supersede this decision if product scale, enterprise requirements, security requirements, or regulatory requirements justify a change.
 
 ---
 
