@@ -1480,11 +1480,59 @@ Need to finalize the production database and deployment configuration.
 
 ---
 
-## OPEN-006 — Frontend Stack
+# DEC-051 — Frontend Stack
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** TECHNOLOGY / UX
 
-Need to finalize the exact frontend framework and UI component architecture.
+## Decision
+
+The QuantMind MVP frontend will use:
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+
+The frontend will be responsible for:
+
+- Research interface
+- Company/entity research pages
+- Evidence and source presentation
+- Quantitative result visualization
+- Research history
+- Comparison workflows
+- Loading and error states
+- Responsive user experience
+
+## Reasoning
+
+Next.js provides a strong foundation for the research-first web application while TypeScript improves maintainability and type safety.
+
+Tailwind CSS supports the project's Quiet Intelligence design system without introducing unnecessary UI complexity.
+
+The frontend should remain focused on presenting intelligence and evidence rather than implementing core financial computation or business logic.
+
+## Consequences
+
+The frontend communicates with the backend through defined application/API interfaces.
+
+Financial calculations, data retrieval, evidence processing, and AI orchestration must remain outside the presentation layer.
+
+The exact component library remains an implementation detail and should not be introduced as an architectural dependency without justification.
+
+## Affected Documents
+
+- brain.md
+- docs/PRD.md
+- docs/MVP-Scope.md
+- docs/TRD.md
+- docs/UI-UX-Design-Brief.md
+- docs/App-Flow.md
+
+## Notes
+
+This decision can be superseded if MVP validation or technical requirements provide a material reason to change the frontend architecture.
 
 ---
 
