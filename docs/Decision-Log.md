@@ -1444,18 +1444,28 @@ Selection must consider coverage, reliability, licensing, cost, and API quality.
 
 ---
 
-## OPEN-003 — AI Model Provider
+# DEC-055 — AI Model Architecture
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** AI / ARCHITECTURE
 
-Need to determine:
+## Decision
 
-* Primary model
-* Fallback model
-* Structured-output approach
-* Cost controls
-* Context requirements
-* Evaluation methodology
+QuantMind will use a provider-agnostic AI architecture.
+
+The application will communicate with AI models through an internal AI interface rather than directly coupling core product logic to a specific model provider.
+
+Conceptually:
+
+```text
+QuantMind AI Interface
+        ↓
+AI Provider Adapter
+        ↓
+Model Provider
+        ↓
+Model
 
 ---
 
