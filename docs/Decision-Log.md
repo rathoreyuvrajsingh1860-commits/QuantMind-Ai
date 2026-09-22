@@ -1383,31 +1383,143 @@ It requires exposing:
 
 ---
 
-# 55. DEC-050 — No Silent Architectural Overrides
+````md
+# DEC-055 — AI Model Architecture
 
 **Status:** ACCEPTED
 **Date:** 2026-09-22
-**Category:** GOVERNANCE
+**Category:** AI / ARCHITECTURE
 
 ## Decision
 
-No developer, AI agent, or implementation process may silently override documented architecture.
+QuantMind will use a provider-agnostic AI architecture.
 
-If a conflict exists:
+The application will communicate with AI models through an internal AI interface rather than directly coupling core product logic to a specific model provider.
+
+Conceptually:
 
 ```text
-Identify Conflict
-↓
-Explain Conflict
-↓
-Propose Change
-↓
-Approve Decision
-↓
-Update Documentation
-↓
-Implement
+QuantMind AI Interface
+        ↓
+AI Provider Adapter
+        ↓
+Model Provider
+        ↓
+Model
+````
+
+The AI layer must support:
+
+* Primary model
+* Compatible fallback model(s)
+* Structured outputs
+* Model-specific configuration
+* Provider-specific adapters
+* Timeout handling
+* Retry handling
+* Fallback handling
+* Usage and cost tracking
+* Model evaluation
+
+## AI Responsibilities
+
+The AI layer will be responsible for:
+
+* Research reasoning
+* Evidence synthesis
+* Financial-context interpretation
+* Fact vs interpretation separation
+* Response composition
+* Uncertainty communication
+* Natural-language understanding where required
+
+The AI layer must not become the source of raw financial truth.
+
+It should operate on:
+
+```text
+Retrieved Data
++
+Evidence
++
+Quantitative Results
++
+Temporal Context
++
+Known Limitations
 ```
+
+## Model Selection Principle
+
+The initial production model will be selected through evaluation rather than brand preference.
+
+Evaluation should consider:
+
+* Financial research accuracy
+* Evidence grounding
+* Citation accuracy
+* Structured-output reliability
+* Reasoning quality
+* Context handling
+* Latency
+* Cost
+* Reliability
+* Rate limits
+* Data/privacy requirements
+
+The exact primary model and fallback model will be recorded as a separate implementation decision after evaluation.
+
+## Reasoning
+
+QuantMind's long-term architecture should not depend on the continued availability, pricing, performance, or API design of one AI provider.
+
+A provider abstraction allows the system to evolve as models improve.
+
+It also allows QuantMind to select different models for different workloads when justified.
+
+## Consequences
+
+Core application modules must not directly depend on provider-specific SDKs.
+
+Provider-specific code must remain inside AI provider adapters.
+
+Prompts, structured output schemas, model configuration, and evaluation logic should be organized so that models can be compared without rewriting the research pipeline.
+
+AI provider failures must follow the existing graceful-degradation strategy:
+
+```text
+Retry
+↓
+Compatible Fallback
+↓
+Partial Result
+↓
+Transparent Limitation
+```
+
+The system must never fabricate financial information because an AI provider failed.
+
+## Affected Documents
+
+* brain.md
+* docs/PRD.md
+* docs/MVP-Scope.md
+* docs/TRD.md
+* docs/Data-Sources.md
+* docs/App-Flow.md
+* docs/Decision-Log.md
+
+## Notes
+
+This decision intentionally does not select a specific AI provider or model.
+
+The primary and fallback models will be selected after the QuantMind evaluation framework is established.
+
+This decision can be superseded if future product requirements justify a different AI architecture.
+
+```
+```
+
 
 ---
 
