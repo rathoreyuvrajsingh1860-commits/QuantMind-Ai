@@ -1472,12 +1472,105 @@ Need to determine:
 
 ---
 
-## OPEN-005 — Database Technology
+# DEC-053 — Database Technology
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** TECHNOLOGY / DATA / INFRASTRUCTURE
 
-Need to finalize the production database and deployment configuration.
+## Decision
 
+The QuantMind MVP will use:
+
+> **PostgreSQL**
+
+The MVP database will be hosted through:
+
+> **Supabase PostgreSQL**
+
+PostgreSQL will serve as the primary relational database for QuantMind's structured application and financial-intelligence metadata.
+
+## Database Responsibilities
+
+The database will support data such as:
+
+- Users and application accounts
+- Research history
+- Companies and entities
+- Research requests
+- Evidence metadata
+- Source metadata
+- Retrieved financial information
+- Quantitative results
+- Provider metadata
+- AI analysis metadata
+- Evaluation records
+- Application configuration where appropriate
+
+The database must preserve appropriate:
+
+- Source information
+- Timestamps
+- Units
+- Currency
+- Periods
+- Relationships
+- Provenance
+- Data status
+
+## Reasoning
+
+PostgreSQL provides a mature relational foundation for QuantMind's MVP and is well suited to structured financial data, relationships between entities and evidence, transactional application data, and deterministic quantitative workflows.
+
+Supabase provides managed PostgreSQL infrastructure and can reduce operational complexity during the MVP stage.
+
+The choice also leaves room for future expansion without requiring the MVP to adopt a specialized database architecture prematurely.
+
+## Architecture Principle
+
+The MVP will not introduce a dedicated graph database merely for the long-term Evidence Graph vision.
+
+The minimum Evidence Graph structure will be represented using appropriate relational models and relationships.
+
+A specialized graph database may be evaluated later if actual product requirements justify it.
+
+## Consequences
+
+The application must access database functionality through clear repository/data-access boundaries.
+
+Business logic should not be tightly coupled to database-specific implementation details.
+
+Database schemas and migrations must be version controlled.
+
+Production credentials must never be committed to the repository.
+
+Database design must preserve financial data provenance and temporal context where required.
+
+## Affected Documents
+
+- brain.md
+- docs/PRD.md
+- docs/MVP-Scope.md
+- docs/TRD.md
+- docs/Data-Sources.md
+- docs/App-Flow.md
+- docs/Decision-Log.md
+
+## Notes
+
+This decision establishes PostgreSQL as the MVP database technology.
+
+It does not finalize:
+
+- Authentication architecture
+- AI provider
+- Financial-data providers
+- Deployment architecture
+- Future graph-database requirements
+
+Those remain separate decisions.
+
+This decision can be superseded if actual MVP requirements provide a material reason to change the database architecture.
 ---
 
 # DEC-051 — Frontend Stack
