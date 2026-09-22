@@ -1,5 +1,3 @@
-Yes. **Paste the following exactly into `brain.md`**. No extra explanation or changes are needed right now.
-
 ````md
 # QuantMind AI — Project Constitution
 
