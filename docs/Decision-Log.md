@@ -2764,18 +2764,211 @@ Specific thresholds should be added as measurable decisions once the evaluation 
 
 ---
 
-## OPEN-010 — Data Retention Policy
+# DEC-060 — Data Retention Policy
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** DATA / PRIVACY / SECURITY / INFRASTRUCTURE
 
-Need to define retention based on:
+## Decision
 
-* Provider terms
-* Product requirements
-* Privacy requirements
-* Storage cost
-* Research reproducibility
+QuantMind will follow a data-retention policy based on:
 
+- Product requirements
+- Data-provider licensing terms
+- Privacy requirements
+- Security requirements
+- Regulatory requirements
+- Storage considerations
+- Research reproducibility requirements
+
+QuantMind will not retain data indefinitely by default.
+
+## Data Categories
+
+Retention requirements should be evaluated separately for:
+
+- User account data
+- Authentication-related data
+- Research queries
+- Research history
+- Retrieved financial data
+- Raw provider responses
+- Canonical financial data
+- Evidence metadata
+- Source metadata
+- Quantitative results
+- AI-generated research outputs
+- Evaluation datasets
+- Application logs
+- Security/audit logs
+- Cached data
+
+Different categories may require different retention periods.
+
+## Provider Restrictions
+
+External financial-data providers may impose restrictions on:
+
+- Storage duration
+- Historical storage
+- Caching
+- Redistribution
+- User display
+- Derived-data storage
+- AI processing
+- Retention after subscription termination
+
+Provider-specific restrictions must be respected.
+
+QuantMind must not assume that data can be stored permanently merely because it was successfully retrieved.
+
+## User Data
+
+User-related data should be retained only for legitimate product, security, legal, or operational purposes.
+
+Where appropriate, users should have mechanisms to:
+
+- Understand what information is retained
+- Request deletion where applicable
+- Manage their account data
+- Understand relevant retention limitations
+
+Future enterprise requirements may introduce organization-specific retention policies.
+
+## Financial Research Data
+
+Financial data retention must balance:
+
+```text
+Provider Rights
++
+Research Reproducibility
++
+Product Requirements
++
+Storage Cost
++
+Privacy / Security
+
+Where long-term storage is not permitted by a provider, QuantMind should retain appropriate metadata or derived information only when permitted and technically useful.
+
+Raw Provider Data
+
+Raw provider responses should not automatically be retained indefinitely.
+
+Retention of raw data must be justified by:
+
+Provider licensing
+Debugging requirements
+Reproducibility
+Data lineage
+Operational requirements
+
+When raw retention is not permitted or necessary, the system should retain appropriate normalized information and provenance metadata where allowed.
+
+Evidence and Provenance
+
+Evidence metadata should be retained sufficiently to support:
+
+Source attribution
+Research reproducibility
+Claim verification
+Quantitative traceability
+Historical context
+
+The retained representation must remain consistent with applicable provider and licensing restrictions.
+
+Logs
+
+Application and infrastructure logs should follow separate retention rules based on:
+
+Debugging requirements
+Security requirements
+Operational monitoring
+Privacy requirements
+Storage considerations
+
+Logs must not unnecessarily contain:
+
+API secrets
+Authentication credentials
+Sensitive user information
+Unnecessary financial information
+Evaluation Data
+
+Evaluation datasets and ground-truth records should be versioned and retained as long as necessary to support:
+
+Regression testing
+Model comparison
+Product evaluation
+Reproducibility
+
+External data included in evaluation datasets must comply with applicable licensing and usage restrictions.
+
+Deletion
+
+Where data is no longer required and deletion is permitted, it should be removed according to the applicable retention policy.
+
+Deletion workflows must consider:
+
+Primary storage
+Caches
+Derived data
+Backups
+Logs
+Provider-specific requirements
+
+Deletion must not be claimed as complete unless the relevant storage architecture supports that claim.
+
+Security
+
+Retained data must be protected using appropriate security controls.
+
+Access should follow the principle of least privilege.
+
+Sensitive information should not be accessible to systems or users that do not require it.
+
+Retention Configuration
+
+Retention periods should be configurable where practical rather than hardcoded throughout the application.
+
+Future enterprise requirements may allow organization-specific retention configurations.
+
+Reasoning
+
+QuantMind requires enough historical information and provenance to produce trustworthy research while avoiding unnecessary long-term storage.
+
+A category-specific retention strategy provides flexibility to satisfy different provider, privacy, security, and product requirements.
+
+Consequences
+
+The implementation must document retention requirements for each persistent data category before production launch.
+
+Provider-specific restrictions must be recorded alongside the relevant data-source configuration.
+
+Retention policies should be reviewed when:
+
+A provider changes its terms
+New data categories are introduced
+New regulations apply
+Product requirements change
+Enterprise functionality is introduced
+Affected Documents
+brain.md
+docs/PRD.md
+docs/MVP-Scope.md
+docs/TRD.md
+docs/Data-Sources.md
+docs/App-Flow.md
+docs/Decision-Log.md
+Notes
+
+This decision establishes the retention-policy framework.
+
+It does not assign universal fixed retention periods to every data category because those periods depend on provider contracts, product requirements, privacy requirements, and the final production architecture.
+
+Specific retention periods should be documented before the corresponding production systems are implemented.
 ---
 
 # 57. Superseding Decisions
