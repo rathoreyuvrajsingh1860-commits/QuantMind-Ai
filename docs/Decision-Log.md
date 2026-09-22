@@ -1540,20 +1540,250 @@ Need to determine:
 
 ---
 
-## OPEN-002 — Initial Data Providers
+# DEC-056 — Financial Data Provider Architecture
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** DATA / ARCHITECTURE / INFRASTRUCTURE
 
-Need to evaluate:
+## Decision
 
-* Market-data provider
-* News provider
-* Filing provider
-* Financial-statement provider
-* Macro provider
+QuantMind will use a provider-agnostic financial data architecture.
 
-Selection must consider coverage, reliability, licensing, cost, and API quality.
+External financial-data providers must be accessed through internal provider interfaces and adapters.
 
+Conceptually:
+
+```text
+QuantMind Data Interface
+        ↓
+Provider Adapter
+        ↓
+External Data Provider
+
+The application must not make the core research system directly dependent on a single financial-data provider.
+
+Data Categories
+
+The provider architecture should support, where required:
+
+Market data
+Company/entity reference data
+Financial statements
+Regulatory filings
+Earnings information
+News
+Macro-economic data
+Corporate actions
+Historical data
+Reference data
+
+The exact initial coverage will be determined separately.
+
+Provider Selection Criteria
+
+Each candidate provider should be evaluated based on:
+
+Market coverage
+Asset-class coverage
+Geographic coverage
+Historical depth
+Data accuracy
+Data freshness
+API quality
+Reliability
+Rate limits
+Commercial licensing
+Storage rights
+AI processing rights
+Redistribution restrictions
+Attribution requirements
+Cost
+Terms of use
+
+No provider should be selected solely because it offers a convenient API.
+
+Primary and Secondary Sources
+
+QuantMind should maintain appropriate source hierarchy.
+
+When relevant and available:
+
+Primary Source
+      ↓
+Official / Regulatory Data
+      ↓
+Validated Secondary Source
+      ↓
+Derived / Calculated Data
+
+Secondary providers may still be used when they provide useful structured data, historical coverage, aggregation, or context.
+
+Provider Abstraction
+
+The internal data layer should expose normalized interfaces rather than provider-specific formats.
+
+Conceptually:
+
+Research Service
+      ↓
+QuantMind Data Interface
+      ↓
+Provider Adapter
+      ↓
+Provider API
+
+Provider-specific implementation details must remain inside the adapter layer.
+
+Data Normalization
+
+Retrieved data must be normalized into QuantMind's canonical internal representation where appropriate.
+
+Normalization should preserve:
+
+Entity identity
+Currency
+Unit
+Scale
+Reporting period
+Publication date
+Effective date
+Retrieval timestamp
+Source
+Provider
+Data status
+Relevant corporate-action context
+
+Normalization must not remove information required for provenance or temporal correctness.
+
+Provenance
+
+Important financial data must remain traceable to its source.
+
+Conceptually:
+
+Provider
+↓
+Raw Data
+↓
+Validation
+↓
+Canonical Data
+↓
+Evidence
+↓
+Calculation
+↓
+Analysis
+
+Derived quantitative results should be traceable to their underlying inputs where practical.
+
+Data Quality
+
+Provider data must not automatically be treated as correct.
+
+QuantMind should validate important data for:
+
+Missing values
+Invalid values
+Unexpected units
+Currency inconsistencies
+Duplicate records
+Date inconsistencies
+Entity mismatches
+Corporate-action effects
+Unexpected revisions
+
+Where credible sources disagree, the disagreement should remain identifiable rather than being silently hidden.
+
+Licensing
+
+Before production use, each provider must be evaluated for:
+
+Commercial usage rights
+Storage rights
+Historical-data rights
+AI processing rights
+Redistribution rights
+User-display rights
+Attribution requirements
+Retention requirements
+
+Public accessibility must not be treated as equivalent to commercial permission.
+
+Failure Handling
+
+Provider failures should follow the existing graceful-degradation strategy:
+
+Provider Request
+      ↓
+Retry
+      ↓
+Compatible Fallback Provider
+      ↓
+Partial Result
+      ↓
+Transparent Limitation
+
+Fallback providers must only be used when their data is sufficiently compatible with the requested analysis.
+
+The system must never silently substitute incompatible data.
+
+Initial Provider Selection
+
+The exact production providers remain a separate implementation decision.
+
+Before implementation, the team must define:
+
+Initial markets
+Asset classes
+Geographies
+Required historical coverage
+Freshness requirements
+Required data categories
+Provider candidates
+Licensing constraints
+Cost constraints
+
+Provider selection should be documented after evaluation.
+
+Reasoning
+
+Financial data is one of QuantMind's foundational dependencies.
+
+A provider abstraction prevents vendor lock-in and allows QuantMind to change or combine providers as coverage, pricing, licensing, reliability, and product requirements evolve.
+
+It also allows different providers to be used for different categories of financial information when justified.
+
+Consequences
+
+Core research and quant modules must not directly depend on provider-specific SDKs or response formats.
+
+Provider adapters should be independently testable.
+
+The canonical data model must remain controlled by QuantMind rather than being dictated by an external provider.
+
+Affected Documents
+brain.md
+docs/PRD.md
+docs/MVP-Scope.md
+docs/TRD.md
+docs/Data-Sources.md
+docs/App-Flow.md
+docs/Decision-Log.md
+Notes
+
+This decision establishes the financial-data provider architecture but does not select the exact providers.
+
+Specific provider selection requires separate evaluation of coverage, reliability, licensing, cost, and technical compatibility.
+
+This decision can be superseded if actual MVP requirements justify a different data architecture.
+
+
+### Commit message
+
+```text
+Accept provider-agnostic financial data architecture
 ---
 
 # DEC-055 — AI Model Architecture
