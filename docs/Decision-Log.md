@@ -1527,17 +1527,133 @@ This decision can be superseded if future product requirements justify a differe
 
 The following decisions remain unresolved and must be finalized before the corresponding implementation stage.
 
-## OPEN-001 — Initial Market Coverage
+# DEC-057 — Initial Market Coverage
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** PRODUCT / DATA / SCOPE
 
-Need to determine:
+## Decision
 
-* Initial countries
-* Exchanges
-* Markets
-* Asset classes
+The QuantMind MVP will initially support:
 
+### Geography
+
+- India
+- United States
+
+### Primary Markets
+
+- Indian equity markets
+- United States equity markets
+
+### Initial Asset Class
+
+- Listed equities
+
+The MVP will prioritize research and intelligence for publicly listed companies and their associated financial information.
+
+## Initial Research Coverage
+
+The MVP should prioritize the following information categories:
+
+- Company/entity information
+- Market and price data
+- Financial statements
+- Regulatory filings
+- Earnings information
+- Relevant financial news
+- Macro-economic context
+- Basic quantitative market analysis
+
+The availability of each category depends on the selected data providers and applicable licensing.
+
+## Historical Coverage
+
+The initial target is:
+
+> **At least 5 years of historical data where reliable and appropriately licensed data is available.**
+
+Five years is a target rather than a guarantee of universal coverage.
+
+The system must communicate when historical coverage is incomplete.
+
+## Market Coverage Boundary
+
+QuantMind must not imply that it supports all global markets during the MVP.
+
+The initial product should clearly communicate its supported coverage.
+
+Additional countries, exchanges, and asset classes may be added after MVP validation.
+
+## Reasoning
+
+India and the United States provide two important and complementary equity markets while keeping the initial product scope manageable.
+
+Supporting both markets also allows QuantMind to validate its research architecture across different financial-data environments rather than optimizing the system for a single geography.
+
+Limiting the initial asset class to listed equities keeps the MVP focused on the core Financial Research Intelligence workflow.
+
+## Consequences
+
+Data-provider evaluation must prioritize reliable coverage for:
+
+- Indian equities
+- US equities
+- Company fundamentals
+- Filings
+- Earnings
+- Market data
+- Relevant news
+- Macro information
+
+Provider selection must also consider the historical depth required to support the five-year target.
+
+Quantitative functions must correctly handle differences in:
+
+- Currency
+- Exchange
+- Trading calendar
+- Time zone
+- Reporting conventions
+- Corporate actions
+- Financial periods
+
+## Future Expansion
+
+Future coverage may include:
+
+- Additional countries
+- Additional exchanges
+- ETFs
+- Bonds
+- Commodities
+- Currencies
+- Derivatives
+- Digital assets
+- Other financial instruments
+
+These remain outside the initial MVP unless explicitly added through a documented scope decision.
+
+## Affected Documents
+
+- brain.md
+- docs/PRD.md
+- docs/MVP-Scope.md
+- docs/TRD.md
+- docs/Data-Sources.md
+- docs/App-Flow.md
+- docs/Decision-Log.md
+
+## Notes
+
+This decision defines the initial MVP market boundary.
+
+It does not finalize the specific data providers required to serve these markets.
+
+Provider selection remains governed by DEC-056 — Financial Data Provider Architecture.
+
+This decision can be superseded when MVP validation or product requirements justify broader market coverage.
 ---
 
 # DEC-056 — Financial Data Provider Architecture
