@@ -2244,18 +2244,287 @@ This decision can be superseded if MVP validation or technical requirements prov
 
 ---
 
-## OPEN-008 — Evaluation Dataset
+# DEC-058 — MVP Evaluation Dataset
 
-**Status:** OPEN
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** AI / QUANT / DATA / QUALITY
 
-Need to establish:
+## Decision
 
-* Research questions
-* Ground-truth answers
-* Expected evidence
-* Quantitative expected results
-* Temporal test cases
-* Failure cases
+QuantMind will establish a dedicated evaluation dataset before relying on AI-model performance for production research workflows.
+
+The evaluation dataset will contain representative financial research tasks covering the initial MVP market scope:
+
+- India
+- United States
+- Listed equities
+
+The dataset will be designed to evaluate the complete research pipeline rather than only the final language-model response.
+
+## Evaluation Case Structure
+
+Each evaluation case should contain, where applicable:
+
+```text
+Research Question
+↓
+Expected Intent
+↓
+Expected Entity
+↓
+Required Data
+↓
+Expected Evidence
+↓
+Expected Quantitative Results
+↓
+Expected Temporal Constraints
+↓
+Expected Answer Characteristics
+↓
+Known Limitations
+Evaluation Categories
+
+The initial dataset should include cases covering:
+
+Company Research
+
+Examples:
+
+Company overview
+Financial performance
+Revenue/profit trends
+Balance-sheet information
+Recent company developments
+Why-Moving Research
+
+Cases involving:
+
+Significant price movements
+Relevant news
+Earnings events
+Company announcements
+Macro-related movements
+Financial Analysis
+
+Cases requiring:
+
+Growth calculations
+Percentage changes
+Historical comparisons
+Returns
+Volatility
+Basic statistical calculations
+Filing and Earnings Research
+
+Cases requiring retrieval and interpretation of:
+
+Regulatory filings
+Financial statements
+Earnings information
+Management commentary where appropriately sourced
+Comparative Research
+
+Cases comparing:
+
+Companies
+Financial metrics
+Historical periods
+Relevant market context
+Temporal Research
+
+Cases specifically testing:
+
+Publication dates
+Reporting periods
+Historical information availability
+Revision handling
+No-lookahead behavior
+Evidence and Citation
+
+Cases testing whether:
+
+Claims are supported by appropriate evidence
+Sources are correctly attributed
+Calculations can be traced to inputs
+Evidence is relevant to the claim
+Missing and Conflicting Data
+
+Cases where:
+
+Required information is unavailable
+Sources disagree
+Data is incomplete
+A provider returns partial information
+
+The expected behavior should be explicitly defined.
+
+Ground Truth
+
+Where possible, evaluation cases should contain human-reviewed ground truth.
+
+Ground truth may include:
+
+Expected factual statements
+Expected numerical results
+Expected source types
+Expected evidence
+Expected calculations
+Expected limitations
+Acceptable answer variations
+
+Ground truth must distinguish between:
+
+Objective Fact
+Derived Calculation
+Interpretation
+Acceptable Uncertainty
+
+Interpretive questions should not be evaluated as though they have only one universally correct wording.
+
+Quantitative Ground Truth
+
+Quantitative evaluation cases must define expected:
+
+Formula
+Inputs
+Units
+Currency
+Period
+Result
+Acceptable numerical tolerance
+
+The evaluation system must verify calculations independently rather than comparing only generated text.
+
+Temporal Ground Truth
+
+Historical evaluation cases must specify the relevant information cutoff.
+
+The system must not receive or use information that was unavailable at the required historical point.
+
+Temporal evaluation should test for:
+
+Publication date
+Effective date
+Reporting period
+Retrieval date
+Historical availability
+Failure Cases
+
+The dataset must intentionally include difficult cases such as:
+
+Missing data
+Conflicting sources
+Ambiguous entities
+Stale information
+Incorrect units
+Currency differences
+Provider failures
+Insufficient evidence
+Questions requiring an explicit limitation
+
+A correct response may be a partial answer or a transparent limitation when the available evidence is insufficient.
+
+Evaluation Metrics
+
+The evaluation framework should eventually measure:
+
+Factual accuracy
+Evidence grounding
+Citation accuracy
+Quantitative accuracy
+Temporal correctness
+Entity resolution accuracy
+Hallucination rate
+Missing-data behavior
+Contradiction handling
+Response completeness
+Structured-output validity
+
+Metrics should be tracked independently rather than collapsed into a single arbitrary score.
+
+Dataset Construction
+
+The initial evaluation dataset should combine:
+
+Manually authored research questions
+Representative real-world financial questions
+Edge cases
+Failure cases
+Quantitative test cases
+Historical test cases
+
+Where external data is used, its licensing and permitted use must be verified before incorporating it into persistent evaluation infrastructure.
+
+Dataset Separation
+
+Evaluation data should be separated from development prompts and implementation examples where practical.
+
+The team should maintain held-out cases that are not repeatedly used during prompt development.
+
+This reduces the risk of optimizing the system against the same questions used to measure it.
+
+Versioning
+
+The evaluation dataset must be version controlled.
+
+Changes should record:
+
+Dataset version
+Added cases
+Removed cases
+Modified ground truth
+Reason for modification
+Evaluation results
+
+Historical evaluation results should remain reproducible where the underlying data and licensing permit.
+
+Reasoning
+
+QuantMind's core product promise depends on reliable financial intelligence.
+
+A dedicated evaluation dataset allows the team to measure whether changes to:
+
+Models
+Prompts
+Retrieval
+Providers
+Quantitative logic
+Verification
+Response composition
+
+actually improve the system.
+
+The evaluation framework should measure the complete intelligence pipeline rather than treating model quality as equivalent to product quality.
+
+Consequences
+
+AI model selection should be informed by evaluation results.
+
+Prompt and model changes should be evaluated against a stable baseline.
+
+Quantitative functions should also have independent unit and integration tests.
+
+Evaluation infrastructure should eventually become part of QuantMind's long-term reliability and product moat.
+
+Affected Documents
+brain.md
+docs/PRD.md
+docs/MVP-Scope.md
+docs/TRD.md
+docs/Data-Sources.md
+docs/App-Flow.md
+docs/Decision-Log.md
+Notes
+
+This decision establishes the evaluation-dataset architecture and methodology.
+
+It does not yet define the final number of evaluation cases or numerical production thresholds.
+
+Those remain part of the MVP accuracy-threshold decision.
+
+This decision can be expanded as the MVP evaluation framework matures.
 
 ---
 
