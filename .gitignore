@@ -1,0 +1,60 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Build / distribution
+dist/
+build/
+.next/
+out/
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test / coverage
+.coverage
+htmlcov/
+coverage/
+.pytest_cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets / credentials
+*.pem
+*.key
+*.crt
+
+# Generated files
+.cache/
