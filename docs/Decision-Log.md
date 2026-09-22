@@ -1535,12 +1535,74 @@ The exact component library remains an implementation detail and should not be i
 This decision can be superseded if MVP validation or technical requirements provide a material reason to change the frontend architecture.
 
 ---
+# DEC-052 — Backend Stack
 
-## OPEN-007 — Backend Stack
+**Status:** ACCEPTED
+**Date:** 2026-09-22
+**Category:** TECHNOLOGY / ARCHITECTURE
 
-**Status:** OPEN
+## Decision
 
-Need to finalize the backend framework and language.
+The QuantMind MVP backend will use:
+
+- Python
+- FastAPI
+
+The backend will be responsible for:
+
+- API endpoints
+- Authentication integration
+- Research orchestration
+- Intent handling
+- Entity resolution
+- Task planning
+- Data retrieval
+- Evidence retrieval
+- Quantitative computation
+- AI orchestration
+- Verification
+- Research history
+- Provider integrations
+- Error handling
+- Observability
+
+## Reasoning
+
+Python is well suited to QuantMind's financial intelligence workload because the product requires quantitative computation, data processing, AI/ML integration, financial research workflows, and statistical analysis.
+
+FastAPI provides a lightweight API foundation with strong support for typed request/response contracts and asynchronous operations where appropriate.
+
+The backend should remain a modular monolith rather than being split into premature microservices.
+
+## Consequences
+
+The backend will expose defined API/application interfaces to the Next.js frontend.
+
+Core financial logic must remain inside backend/domain modules rather than the frontend.
+
+Quantitative calculations must remain deterministic and independently testable.
+
+External financial-data and AI providers must be accessed through internal abstraction layers.
+
+The backend should remain modular enough that individual components can later be extracted if actual scale or ownership requirements justify it.
+
+## Affected Documents
+
+- brain.md
+- docs/PRD.md
+- docs/MVP-Scope.md
+- docs/TRD.md
+- docs/App-Flow.md
+- docs/Data-Sources.md
+- docs/Decision-Log.md
+
+## Notes
+
+This decision does not lock QuantMind to a specific AI provider, financial-data provider, database, or deployment platform.
+
+Those decisions remain separate architectural decisions.
+
+This decision can be superseded if MVP validation or technical requirements provide a material reason to change the backend architecture.
 
 ---
 
