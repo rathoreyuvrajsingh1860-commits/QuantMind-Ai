@@ -58,3 +58,6 @@ temp/
 
 # Generated files
 .cache/
+
+# Python packaging metadata
+*.egg-info/
