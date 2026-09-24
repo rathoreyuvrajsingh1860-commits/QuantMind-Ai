@@ -283,6 +283,20 @@ The architecture exists to make financial intelligence **traceable, testable, an
 
 The MVP uses a **modular monolith** architecture.
 
+## Locked Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js + TypeScript + Tailwind CSS |
+| Backend | Python + FastAPI |
+| Database | PostgreSQL |
+| Database Hosting | Supabase PostgreSQL |
+| Authentication | Supabase Auth |
+| AI Architecture | Provider-agnostic AI interface / adapters |
+| Financial Data Architecture | Provider-agnostic data interfaces / adapters |
+
+The exact AI model/provider and financial-data providers are intentionally not locked to a single vendor. They must be selected through evaluation of reliability, accuracy, coverage, licensing, cost, and technical compatibility.
+
 Conceptually:
 
 ```text
@@ -301,11 +315,9 @@ Quant Engine
 AI / Reasoning Layer
      ↓
 Persistence
-```
 
 Major logical modules include:
 
-```text
 src/
 ├── api/
 ├── auth/
@@ -321,12 +333,12 @@ src/
 ├── config/
 ├── observability/
 └── shared/
-```
 
-The exact framework, database, AI provider, infrastructure provider, and deployment stack remain open decisions unless explicitly documented elsewhere.
+The MVP remains a modular monolith even though its internal modules have clear boundaries.
 
-Do not invent or lock these technologies without updating the relevant documentation.
+Technology decisions are governed by docs/Decision-Log.md.
 
+Do not introduce competing frameworks, providers, databases, or architectural patterns without documenting the change first.
 ---
 
 # 9. Repository Structure
@@ -707,26 +719,47 @@ If a change conflicts with existing architecture, update the relevant documentat
 
 # 20. Current Open Decisions
 
-The following decisions remain intentionally open and should not be invented:
+The foundational technology and product decisions below have been formally documented in `docs/Decision-Log.md`.
 
-* Initial market coverage
-* Exact financial data providers
-* AI model/provider
-* Authentication provider
-* Database selection
-* Frontend stack
-* Backend stack
-* Evaluation dataset
-* Accuracy thresholds
-* Data retention policy
-* Exact historical coverage
-* Initial asset-class coverage
+### Accepted / Established Decisions
 
-These are tracked in:
+- Initial market coverage: India + United States
+- Initial asset class: Listed equities
+- Initial historical target: At least 5 years where reliable and appropriately licensed data is available
+- Financial-data architecture: Provider-agnostic
+- AI architecture: Provider-agnostic
+- Authentication: Supabase Auth
+- Database: PostgreSQL hosted through Supabase PostgreSQL
+- Frontend: Next.js + TypeScript + Tailwind CSS
+- Backend: Python + FastAPI
+- Evaluation: Dedicated MVP evaluation dataset
+- Quality: Category-specific accuracy and quality thresholds
+- Retention: Data-retention policy framework
+
+### Still Requiring Implementation-Level Decisions
+
+The following details remain intentionally open where the Decision Log does not yet select a specific vendor or numerical value:
+
+- Exact financial-data providers
+- Exact AI model/provider
+- Exact fallback AI model/provider
+- Final evaluation-dataset size
+- Final numerical production thresholds
+- Exact retention periods by data category
+- Exact historical coverage beyond the five-year target
+- Provider-specific licensing arrangements
+- Deployment/infrastructure configuration
+
+These decisions must be evaluated and documented before the corresponding production implementation.
+
+See:
 
 ```text
 docs/Decision-Log.md
-```
+
+for the authoritative decision record.
+
+Do not invent unresolved implementation details or treat them as permanent architecture without an explicit documented decision.
 
 ---
 
