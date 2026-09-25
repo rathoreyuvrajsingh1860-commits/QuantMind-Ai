@@ -1,5 +1,3 @@
-from datetime import date
-
 from src.config.settings import settings
 from src.data.base import FinancialDataProvider
 from src.data.models import CompanyProfile, PriceBar
@@ -7,10 +5,32 @@ from src.data.providers.alpha_vantage import AlphaVantageProvider
 from src.data.providers.twelve_data import TwelveDataProvider
 
 
-class DataService:
-    """Application-level interface for financial data."""
+def create_financial_data_provider() -> FinancialDataProvider:
+    """Create the configured financial data provider."""
 
-    def __init__(self, provider: FinancialDataProvider) -> None:
+    provider = settings.financial_data_provider.strip().lower()
+
+    providers: dict[str, type[FinancialDataProvider]] = {
+        "alpha_vantage": AlphaVantageProvider,
+        "twelve_data": TwelveDataProvider,
+    }
+
+    provider_class = providers.get(provider)
+
+    if provider_class is None:
+        supported = ", ".join(sorted(providers))
+        raise ValueError(
+            f"Unsupported financial data provider: {provider!r}. "
+            f"Supported providers: {supported}"
+        )
+
+    return provider_class()
+
+
+class DataService:
+    """Application service for financial data providers."""
+
+    def __init__(self, provider: FinancialDataProvider):
         self.provider = provider
 
     def search_company(self, query: str) -> list[CompanyProfile]:
@@ -22,8 +42,8 @@ class DataService:
     def get_price_history(
         self,
         symbol: str,
-        start: date,
-        end: date,
+        start,
+        end,
     ) -> list[PriceBar]:
         return self.provider.get_price_history(
             symbol,
@@ -39,20 +59,8 @@ class DataService:
 
 
 def create_data_service() -> DataService:
-    """Create the configured financial data service."""
+    """Create the application financial data service."""
 
-    provider_name = settings.financial_data_provider.lower().strip()
-
-    providers: dict[str, type[FinancialDataProvider]] = {
-        "alpha_vantage": AlphaVantageProvider,
-        "twelve_data": TwelveDataProvider,
-    }
-
-    provider_class = providers.get(provider_name)
-
-    if provider_class is None:
-        raise ValueError(
-            f"Unsupported financial data provider: {provider_name}"
-        )
-
-    return DataService(provider_class())
+    return DataService(
+        create_financial_data_provider()
+    )
