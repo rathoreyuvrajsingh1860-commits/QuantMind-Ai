@@ -1,7 +1,10 @@
 from datetime import datetime
 from uuid import UUID, uuid4
+from datetime import date
+from decimal import Decimal
+from sqlalchemy import UniqueConstraint
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -44,6 +47,78 @@ class FinancialInstrument(Base):
     currency: Mapped[str | None] = mapped_column(String(10))
     isin: Mapped[str | None] = mapped_column(String(20))
     metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+
+class PriceHistory(Base):
+    __tablename__ = "price_history"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "instrument_id",
+            "price_date",
+            "source",
+            name="uq_price_history_instrument_date_source",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+
+    instrument_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey(
+            "financial_instruments.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+
+    price_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    open: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+    )
+
+    high: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+    )
+
+    low: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+    )
+
+    close: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6),
+        nullable=False,
+    )
+
+    volume: Mapped[int | None] = mapped_column(
+        BigInteger,
+    )
+
+    adjusted_close: Mapped[Decimal | None] = mapped_column(
+        Numeric(20, 6),
+    )
+
+    source: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class DataSource(Base):

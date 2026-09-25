@@ -40,10 +40,15 @@ class AlphaVantageProvider(FinancialDataProvider):
         if "Error Message" in payload:
             raise RuntimeError(payload["Error Message"])
 
+        if "Information" in payload:
+            raise RuntimeError(
+                f"Alpha Vantage request limit: {payload['Information']}"
+            )
+
         if "Note" in payload:
             raise RuntimeError(
                 f"Alpha Vantage rate limit: {payload['Note']}"
-            )
+         )
 
         return payload
 
@@ -104,19 +109,35 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         normalized_symbol = self._normalize_symbol(symbol)
 
-        search_symbol = normalized_symbol
+        # For an explicitly qualified symbol such as RELIANCE:BSE,
+        # we already know the provider symbol and exchange.
+        if ":" in symbol:
+            ticker, exchange = symbol.rsplit(":", 1)
 
-        if "." in normalized_symbol:
-            search_symbol = normalized_symbol.split(".", 1)[0]
+            exchange = exchange.strip().upper()
 
-        results = self.search_company(search_symbol)
+            exchange_names = {
+                "BSE": "BSE",
+                "NSE": "NSE",
+                "NASDAQ": "NASDAQ",
+                "NYSE": "NYSE",
+            }
+
+            return CompanyProfile(
+                symbol=normalized_symbol,
+                name=ticker.strip(),
+                exchange=exchange_names.get(exchange, exchange),
+                country="India" if exchange in {"BSE", "NSE"} else "United States",
+                currency="INR" if exchange in {"BSE", "NSE"} else "USD",
+          )
+
+        # For an unqualified symbol, use Alpha Vantage search.
+        results = self.search_company(normalized_symbol)
 
         for company in results:
             if company.symbol.upper() == normalized_symbol.upper():
                 return company
 
-        # Alpha Vantage's symbol search can vary by market.
-        # Return a minimal normalized reference if no exact match exists.
         return CompanyProfile(
             symbol=normalized_symbol,
             name=normalized_symbol,
