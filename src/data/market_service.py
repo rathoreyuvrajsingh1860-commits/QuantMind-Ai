@@ -20,6 +20,27 @@ class MarketService:
     def get_profile(self, symbol: str) -> CompanyProfile:
         return self.data_service.get_company_profile(symbol)
 
+    def _rows_to_price_bars(
+        self,
+        symbol: str,
+        rows: list[dict],
+    ) -> list[PriceBar]:
+        return [
+            PriceBar(
+                symbol=symbol,
+                date=row["date"],
+                open=row["open"],
+                high=row["high"],
+                low=row["low"],
+                close=row["close"],
+                volume=row["volume"],
+                adjusted_close=row["adjusted_close"],
+                source=row["source"],
+                retrieved_at=row["retrieved_at"],
+            )
+            for row in rows
+        ]
+
     def get_price_history(
         self,
         symbol: str,
@@ -41,31 +62,28 @@ class MarketService:
             if coverage is not None:
                 earliest, latest = coverage
 
-                # The database completely covers the requested range.
                 if earliest <= start and latest >= end:
-                    stored = self.repository.get_price_history(
-                        instrument_id,
-                        start,
-                        end,
+                    missing_dates = (
+                        self.repository.get_missing_expected_price_dates(
+                            instrument_id,
+                            start,
+                            end,
+                        )
                     )
 
-                    return [
-                        PriceBar(
-                            symbol=symbol,
-                            date=row["date"],
-                            open=row["open"],
-                            high=row["high"],
-                            low=row["low"],
-                            close=row["close"],
-                            volume=row["volume"],
-                            adjusted_close=row["adjusted_close"],
-                            source=row["source"],
-                            retrieved_at=row["retrieved_at"],
+                    if not missing_dates:
+                        stored = self.repository.get_price_history(
+                            instrument_id,
+                            start,
+                            end,
                         )
-                        for row in stored
-                    ]
 
-        # Database does not completely cover the requested range.
+                        return self._rows_to_price_bars(
+                            symbol,
+                            stored,
+                        )
+
+        # Coverage is absent, incomplete, or contains an expected gap.
         ingest_price_history(
             self.data_service,
             symbol,
@@ -89,21 +107,10 @@ class MarketService:
             end,
         )
 
-        return [
-            PriceBar(
-                symbol=symbol,
-                date=row["date"],
-                open=row["open"],
-                high=row["high"],
-                low=row["low"],
-                close=row["close"],
-                volume=row["volume"],
-                adjusted_close=row["adjusted_close"],
-                source=row["source"],
-                retrieved_at=row["retrieved_at"],
-            )
-            for row in stored
-        ]
+        return self._rows_to_price_bars(
+            symbol,
+            stored,
+        )
 
     def close(self):
         self.data_service.close()

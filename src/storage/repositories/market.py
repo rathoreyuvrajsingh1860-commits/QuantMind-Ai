@@ -2,7 +2,7 @@ from datetime import date
 from uuid import UUID
 
 from src.storage.database import get_connection
-
+from src.data.trading_calendar import get_expected_trading_dates
 
 class MarketRepository:
     """Persistence operations for market data."""
@@ -61,8 +61,88 @@ class MarketRepository:
             return None
 
         return row[0], row[1]
-    
-        
+
+    def get_missing_price_dates(
+        self,
+        instrument_id: UUID,
+        start: date,
+        end: date,
+    ) -> list[date]:
+        """Return calendar dates with no stored price observation."""
+
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT price_date
+                    FROM price_history
+                    WHERE instrument_id = %s
+                      AND price_date BETWEEN %s AND %s
+                    ORDER BY price_date ASC
+                    """,
+                    (
+                        instrument_id,
+                        start,
+                        end,
+                    ),
+                )
+
+                stored_dates = {
+                    row[0]
+                    for row in cursor.fetchall()
+                }
+
+        missing_dates: list[date] = []
+
+        current = start
+
+        while current <= end:
+            if current not in stored_dates:
+                missing_dates.append(current)
+
+            current = current.fromordinal(
+                current.toordinal() + 1
+            )
+
+        return missing_dates
+
+    def get_missing_expected_price_dates(
+        self,
+        instrument_id: UUID,
+        start: date,
+        end: date,
+    ) -> list[date]:
+        """Return expected trading dates without stored price data."""
+
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT price_date
+                    FROM price_history
+                    WHERE instrument_id = %s
+                      AND price_date BETWEEN %s AND %s
+                    ORDER BY price_date ASC
+                    """,
+                    (
+                        instrument_id,
+                        start,
+                        end,
+                    ),
+                )
+
+                stored_dates = {
+                    row[0]
+                    for row in cursor.fetchall()
+                }
+
+        expected_dates = get_expected_trading_dates(start, end)
+
+        return [
+            value
+            for value in expected_dates
+            if value not in stored_dates
+        ]
 
     def get_price_history(
         self,
