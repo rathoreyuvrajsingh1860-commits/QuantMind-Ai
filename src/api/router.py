@@ -1,9 +1,12 @@
 from fastapi import APIRouter
 
 from src.storage.database import get_connection
+from src.api.market import router as market_router
 
 
 router = APIRouter(prefix="/api")
+
+router.include_router(market_router)
 
 
 @router.get("/health")
