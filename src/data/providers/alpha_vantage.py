@@ -138,13 +138,6 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         return f"{ticker}{suffix}"
 
-    def _request(self, params: dict[str, str]) -> dict:
-        return retry_with_backoff(
-            lambda: self._request_once(params),
-            max_attempts=3,
-            delays=(1.0, 2.0),
-        )
-
     def search_company(self, query: str) -> list[CompanyProfile]:
         payload = self._request(
             {
