@@ -7,7 +7,12 @@ from src.data.service import (
     DataService,
     create_financial_data_provider,
 )
-
+from src.data.errors import (
+    ProviderAuthenticationError,
+    ProviderServerError,
+    RateLimitError,
+    TemporaryProviderError,
+)
 
 def test_create_alpha_vantage_provider():
     mock_provider = lambda: "alpha-provider"
@@ -98,7 +103,7 @@ def test_data_service_falls_back_when_primary_provider_fails():
             }
 
         def get_company_profile(self, symbol):
-            raise RuntimeError("primary unavailable")
+            raise TemporaryProviderError("primary unavailable")
 
         def close(self):
             pass
@@ -147,5 +152,121 @@ def test_data_service_does_not_use_provider_without_capability():
     with pytest.raises(
         RuntimeError,
         match="No configured provider supports company_profile",
+    ):
+        service.get_company_profile("RELIANCE:BSE")
+
+def test_data_service_falls_back_on_rate_limit():
+    class PrimaryProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            raise RateLimitError()
+
+        def close(self):
+            pass
+
+    class FallbackProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            return "fallback-result"
+
+        def close(self):
+            pass
+
+    service = DataService(
+        PrimaryProvider(),
+        fallback_providers=[FallbackProvider()],
+    )
+
+    assert service.get_company_profile(
+        "RELIANCE:BSE"
+    ) == "fallback-result"
+
+
+def test_data_service_falls_back_on_server_error():
+    class PrimaryProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            raise ProviderServerError()
+
+        def close(self):
+            pass
+
+    class FallbackProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            return "fallback-result"
+
+        def close(self):
+            pass
+
+    service = DataService(
+        PrimaryProvider(),
+        fallback_providers=[FallbackProvider()],
+    )
+
+    assert service.get_company_profile(
+        "RELIANCE:BSE"
+    ) == "fallback-result"
+
+
+def test_data_service_does_not_fallback_on_authentication_error():
+    class PrimaryProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            raise ProviderAuthenticationError(
+                "invalid API key"
+            )
+
+        def close(self):
+            pass
+
+    class FallbackProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            raise AssertionError(
+                "Fallback provider must not be called"
+            )
+
+        def close(self):
+            pass
+
+    service = DataService(
+        PrimaryProvider(),
+        fallback_providers=[FallbackProvider()],
+    )
+
+    with pytest.raises(
+        ProviderAuthenticationError,
+        match="invalid API key",
     ):
         service.get_company_profile("RELIANCE:BSE")

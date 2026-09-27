@@ -9,6 +9,13 @@ from src.data.base import (
     FinancialDataProvider,
 )
 from src.data.models import CompanyProfile, PriceBar
+from src.data.errors import (
+    ProviderAuthenticationError,
+    ProviderInvalidRequestError,
+    ProviderServerError,
+    RateLimitError,
+    UnsupportedDataError,
+)
 
 
 class AlphaVantageProvider(FinancialDataProvider):
@@ -37,29 +44,60 @@ class AlphaVantageProvider(FinancialDataProvider):
         self.client.close()
 
     def _request(self, params: dict[str, str]) -> dict:
-        response = self.client.get(
-            "",
-            params={
-                **params,
-                "apikey": settings.financial_data_api_key,
-            },
+        try:
+            response = self.client.get(
+                "",
+                params={
+                    **params,
+                    "apikey": settings.financial_data_api_key,
+                },
         )
-        response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise ProviderServerError(
+                "Alpha Vantage request timed out"
+            ) from exc
+        except httpx.RequestError as exc:
+            raise ProviderServerError(
+                f"Alpha Vantage request failed: {exc}"
+            ) from exc
+
+        if response.status_code in {401, 403}:
+            raise ProviderAuthenticationError(
+                "Alpha Vantage authentication failed"
+            )
+
+        if response.status_code == 429:
+            raise RateLimitError(
+                "Alpha Vantage rate limit exceeded"
+           )
+
+        if response.status_code >= 500:
+            raise ProviderServerError(
+                f"Alpha Vantage server error: HTTP {response.status_code}"
+           )
+
+        if response.status_code >= 400:
+            raise ProviderInvalidRequestError(
+                f"Alpha Vantage request failed: HTTP {response.status_code}"
+           )
 
         payload = response.json()
 
         if "Error Message" in payload:
-            raise RuntimeError(payload["Error Message"])
+            raise UnsupportedDataError(
+                payload["Error Message"]
+           )
 
         if "Information" in payload:
-            raise RuntimeError(
-                f"Alpha Vantage request limit: {payload['Information']}"
-            )
+            message = payload["Information"]
+
+            if "rate limit" in message.lower():
+                raise RateLimitError(message)
+
+            raise ProviderInvalidRequestError(message)
 
         if "Note" in payload:
-            raise RuntimeError(
-                f"Alpha Vantage rate limit: {payload['Note']}"
-         )
+            raise RateLimitError(payload["Note"])
 
         return payload
 

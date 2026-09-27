@@ -1,5 +1,6 @@
 from datetime import date
 
+from src.data.errors import is_fallback_eligible
 from src.config.settings import settings
 from src.data.base import (
     DataCapability,
@@ -120,8 +121,10 @@ class DataService:
             try:
                 return operation(provider)
             except Exception as exc:
-                last_error = exc
+                if not is_fallback_eligible(exc):
+                    raise
 
+                last_error = exc
         raise RuntimeError(
             f"All providers failed for {capability.value}"
         ) from last_error
