@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import httpx
+from src.data.retry import retry_with_backoff
 
 from src.config.settings import settings
 from src.data.base import (
@@ -43,7 +44,7 @@ class AlphaVantageProvider(FinancialDataProvider):
     def close(self) -> None:
         self.client.close()
 
-    def _request(self, params: dict[str, str]) -> dict:
+    def _request_once(self, params: dict[str, str]) -> dict:
         try:
             response = self.client.get(
                 "",
@@ -101,6 +102,13 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         return payload
 
+    def _request(self, params: dict[str, str]) -> dict:
+        """Request provider data with controlled transient retries."""
+
+        return retry_with_backoff(
+            lambda: self._request_once(params),
+        )
+
     def _normalize_symbol(self, symbol: str) -> str:
         """
         Convert QuantMind's SYMBOL:EXCHANGE notation
@@ -129,6 +137,13 @@ class AlphaVantageProvider(FinancialDataProvider):
             )
 
         return f"{ticker}{suffix}"
+
+    def _request(self, params: dict[str, str]) -> dict:
+        return retry_with_backoff(
+            lambda: self._request_once(params),
+            max_attempts=3,
+            delays=(1.0, 2.0),
+        )
 
     def search_company(self, query: str) -> list[CompanyProfile]:
         payload = self._request(
