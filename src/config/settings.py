@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     financial_data_provider: str = ""
     financial_data_api_key: str = ""
+    financial_data_provider_fallbacks: str = ""
 
     secret_key: str = ""
 

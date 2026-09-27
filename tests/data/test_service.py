@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
+from src.data.base import DataCapability
 from src.data.service import (
     DataService,
     create_financial_data_provider,
@@ -9,30 +10,35 @@ from src.data.service import (
 
 
 def test_create_alpha_vantage_provider():
+    mock_provider = lambda: "alpha-provider"
+
     with patch(
         "src.data.service.settings.financial_data_provider",
         "alpha_vantage",
-    ), patch(
-        "src.data.service.AlphaVantageProvider"
-    ) as mock_provider:
+    ), patch.dict(
+        "src.data.service.PROVIDER_REGISTRY",
+        {"alpha_vantage": mock_provider},
+        clear=True,
+    ):
         result = create_financial_data_provider()
 
-    mock_provider.assert_called_once()
-    assert result == mock_provider.return_value
+    assert result == "alpha-provider"
 
 
 def test_create_twelve_data_provider():
+    mock_provider = lambda: "twelve-provider"
+
     with patch(
         "src.data.service.settings.financial_data_provider",
         "twelve_data",
-    ), patch(
-        "src.data.service.TwelveDataProvider"
-    ) as mock_provider:
+    ), patch.dict(
+        "src.data.service.PROVIDER_REGISTRY",
+        {"twelve_data": mock_provider},
+        clear=True,
+    ):
         result = create_financial_data_provider()
 
-    mock_provider.assert_called_once()
-    assert result == mock_provider.return_value
-
+    assert result == "twelve-provider"
 
 def test_unknown_provider_raises_error():
     with patch(
@@ -45,6 +51,14 @@ def test_unknown_provider_raises_error():
 
 def test_data_service_delegates_to_provider():
     class FakeProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_SEARCH,
+                DataCapability.COMPANY_PROFILE,
+                DataCapability.PRICE_HISTORY,
+            }
+
         def search_company(self, query):
             return [query]
 
@@ -74,3 +88,64 @@ def test_data_service_delegates_to_provider():
 
     service.close()
     assert provider.closed is True
+
+def test_data_service_falls_back_when_primary_provider_fails():
+    class PrimaryProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            raise RuntimeError("primary unavailable")
+
+        def close(self):
+            pass
+
+    class FallbackProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            return "fallback-result"
+
+        def close(self):
+            pass
+
+    service = DataService(
+        PrimaryProvider(),
+        fallback_providers=[FallbackProvider()],
+    )
+
+    assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
+
+
+def test_data_service_does_not_use_provider_without_capability():
+    class ProviderWithoutProfile:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.PRICE_HISTORY,
+            }
+
+        def get_company_profile(self, symbol):
+            raise AssertionError(
+                "Provider without capability should not be called"
+            )
+
+        def close(self):
+            pass
+
+    service = DataService(
+        ProviderWithoutProfile(),
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="No configured provider supports company_profile",
+    ):
+        service.get_company_profile("RELIANCE:BSE")

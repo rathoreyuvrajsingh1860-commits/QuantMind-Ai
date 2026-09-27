@@ -1,20 +1,33 @@
 from abc import ABC, abstractmethod
+from enum import StrEnum
 from datetime import date
 
 from src.data.models import CompanyProfile, PriceBar
 
 
+class DataCapability(StrEnum):
+    """Operations supported by financial data providers."""
+
+    COMPANY_SEARCH = "company_search"
+    COMPANY_PROFILE = "company_profile"
+    PRICE_HISTORY = "price_history"
+
+
 class FinancialDataProvider(ABC):
-    """Provider interface for normalized financial data."""
+    """Abstract interface for financial data providers."""
+
+    @property
+    @abstractmethod
+    def capabilities(self) -> set[DataCapability]:
+        """Return the capabilities supported by this provider."""
+        raise NotImplementedError
 
     @abstractmethod
     def search_company(self, query: str) -> list[CompanyProfile]:
-        """Search for companies/instruments."""
         raise NotImplementedError
 
     @abstractmethod
     def get_company_profile(self, symbol: str) -> CompanyProfile:
-        """Return normalized company information."""
         raise NotImplementedError
 
     @abstractmethod
@@ -24,5 +37,4 @@ class FinancialDataProvider(ABC):
         start: date,
         end: date,
     ) -> list[PriceBar]:
-        """Return normalized historical price data."""
         raise NotImplementedError

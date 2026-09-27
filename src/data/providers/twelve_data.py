@@ -4,7 +4,10 @@ from decimal import Decimal
 import httpx
 
 from src.config.settings import settings
-from src.data.base import FinancialDataProvider
+from src.data.base import (
+    DataCapability,
+    FinancialDataProvider,
+)
 from src.data.models import CompanyProfile, PriceBar
 
 
@@ -12,6 +15,14 @@ class TwelveDataProvider(FinancialDataProvider):
     """Twelve Data implementation of the normalized data-provider interface."""
 
     BASE_URL = "https://api.twelvedata.com"
+
+    @property
+    def capabilities(self) -> set[DataCapability]:
+        return {
+            DataCapability.COMPANY_SEARCH,
+            DataCapability.COMPANY_PROFILE,
+            DataCapability.PRICE_HISTORY,
+        }
 
     def __init__(self) -> None:
         if not settings.financial_data_api_key:
