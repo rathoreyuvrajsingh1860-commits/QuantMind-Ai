@@ -22,6 +22,7 @@ def retry_with_backoff(
     *,
     max_attempts: int = 3,
     delays: tuple[float, ...] = (1.0, 2.0),
+    on_attempt: Callable[[int], None] | None = None,
 ) -> T:
     """Retry transient provider failures with exponential backoff."""
 
@@ -31,6 +32,11 @@ def retry_with_backoff(
     last_error: Exception | None = None
 
     for attempt in range(max_attempts):
+        attempt_number = attempt + 1
+
+        if on_attempt is not None:
+            on_attempt(attempt_number)
+
         try:
             return operation()
 

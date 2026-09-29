@@ -123,3 +123,35 @@ def test_retry_validates_attempt_count():
             lambda: "success",
             max_attempts=0,
         )
+
+def test_retry_reports_attempt_numbers():
+    attempts = []
+
+    def operation():
+        if len(attempts) < 2:
+            raise TemporaryProviderError(
+                "temporary failure"
+            )
+
+        return "success"
+
+    with patch(
+        "src.data.retry.time.sleep"
+    ):
+        result = retry_with_backoff(
+            operation,
+            max_attempts=3,
+            delays=(1.0, 2.0),
+            on_attempt=attempts.append,
+        )
+
+    assert result == "success"
+    assert attempts == [1, 2]
+
+
+def test_retry_without_callback_still_works():
+    result = retry_with_backoff(
+        lambda: "success",
+    )
+
+    assert result == "success"

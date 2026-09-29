@@ -87,6 +87,7 @@ class DataService:
             provider,
             *(fallback_providers or []),
         ]
+        self.last_request_metrics = None
 
     def _providers_for(
         self,
@@ -104,8 +105,13 @@ class DataService:
         self,
         capability: DataCapability,
         operation,
+        operation_name: str,
     ):
         """Execute an operation using configured provider fallback."""
+
+        from time import perf_counter
+
+        from src.observability.provider import ProviderRequestMetrics
 
         providers = self._providers_for(capability)
 
@@ -116,15 +122,62 @@ class DataService:
             )
 
         last_error: Exception | None = None
+        started_at = perf_counter()
 
-        for provider in providers:
+        for provider_index, provider in enumerate(providers):
+            provider_name = provider.__class__.__name__
+
+            metrics = ProviderRequestMetrics(
+                provider=provider_name,
+                operation=operation_name,
+                fallback_used=provider_index > 0,
+            )
+
+            provider_started_at = perf_counter()
+
             try:
-                return operation(provider)
+                result = operation(provider)
+
+                metrics.record_attempt(1)
+                metrics.record_success()
+
+                metrics.duration_ms = (
+                    perf_counter() - provider_started_at
+                ) * 1000
+
+                self.last_request_metrics = metrics
+
+                return result
+
             except Exception as exc:
+                metrics.record_attempt(1)
+
+                error_code = getattr(
+                    getattr(exc, "code", None),
+                    "value",
+                    None,
+                )
+
+                metrics.record_failure(error_code)
+
+                metrics.duration_ms = (
+                    perf_counter() - provider_started_at
+                ) * 1000
+
                 if not is_fallback_eligible(exc):
+                    self.last_request_metrics = metrics
                     raise
 
                 last_error = exc
+
+        total_duration_ms = (
+            perf_counter() - started_at
+        ) * 1000
+
+        if last_error is not None:
+            metrics.duration_ms = total_duration_ms
+            self.last_request_metrics = metrics
+
         raise RuntimeError(
             f"All providers failed for {capability.value}"
         ) from last_error
@@ -136,6 +189,7 @@ class DataService:
         return self._execute_with_fallback(
             DataCapability.COMPANY_SEARCH,
             lambda provider: provider.search_company(query),
+            "search_company",
         )
 
     def get_company_profile(
@@ -145,6 +199,7 @@ class DataService:
         return self._execute_with_fallback(
             DataCapability.COMPANY_PROFILE,
             lambda provider: provider.get_company_profile(symbol),
+            "company_profile",
         )
 
     def get_price_history(
@@ -160,6 +215,7 @@ class DataService:
                 start,
                 end,
             ),
+            "price_history",
         )
 
     def close(self) -> None:
@@ -168,7 +224,6 @@ class DataService:
 
             if close is not None:
                 close()
-
 
 def create_data_service() -> DataService:
     """Create the configured financial data service."""

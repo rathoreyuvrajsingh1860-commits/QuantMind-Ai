@@ -1,15 +1,14 @@
+from collections.abc import Callable
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import httpx
-from src.data.retry import retry_with_backoff
 
 from src.config.settings import settings
 from src.data.base import (
     DataCapability,
     FinancialDataProvider,
 )
-from src.data.models import CompanyProfile, PriceBar
 from src.data.errors import (
     ProviderAuthenticationError,
     ProviderInvalidRequestError,
@@ -17,6 +16,8 @@ from src.data.errors import (
     RateLimitError,
     UnsupportedDataError,
 )
+from src.data.models import CompanyProfile, PriceBar
+from src.data.retry import retry_with_backoff
 
 
 class AlphaVantageProvider(FinancialDataProvider):
@@ -26,7 +27,7 @@ class AlphaVantageProvider(FinancialDataProvider):
 
     @property
     def capabilities(self) -> set[DataCapability]:
-       return {
+        return {
             DataCapability.COMPANY_SEARCH,
             DataCapability.COMPANY_PROFILE,
             DataCapability.PRICE_HISTORY,
@@ -52,7 +53,7 @@ class AlphaVantageProvider(FinancialDataProvider):
                     **params,
                     "apikey": settings.financial_data_api_key,
                 },
-        )
+            )
         except httpx.TimeoutException as exc:
             raise ProviderServerError(
                 "Alpha Vantage request timed out"
@@ -70,24 +71,24 @@ class AlphaVantageProvider(FinancialDataProvider):
         if response.status_code == 429:
             raise RateLimitError(
                 "Alpha Vantage rate limit exceeded"
-           )
+            )
 
         if response.status_code >= 500:
             raise ProviderServerError(
                 f"Alpha Vantage server error: HTTP {response.status_code}"
-           )
+            )
 
         if response.status_code >= 400:
             raise ProviderInvalidRequestError(
                 f"Alpha Vantage request failed: HTTP {response.status_code}"
-           )
+            )
 
         payload = response.json()
 
         if "Error Message" in payload:
             raise UnsupportedDataError(
                 payload["Error Message"]
-           )
+            )
 
         if "Information" in payload:
             message = payload["Information"]
@@ -102,11 +103,20 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         return payload
 
-    def _request(self, params: dict[str, str]) -> dict:
+    def _request(
+        self,
+        params: dict[str, str],
+        *,
+        on_attempt: Callable[[int], None] | None = None,
+    ) -> dict:
         """Request provider data with controlled transient retries."""
 
+        def operation() -> dict:
+            return self._request_once(params)
+
         return retry_with_backoff(
-            lambda: self._request_once(params),
+            operation,
+            on_attempt=on_attempt,
         )
 
     def _normalize_symbol(self, symbol: str) -> str:
@@ -184,9 +194,17 @@ class AlphaVantageProvider(FinancialDataProvider):
                 symbol=normalized_symbol,
                 name=ticker.strip(),
                 exchange=exchange_names.get(exchange, exchange),
-                country="India" if exchange in {"BSE", "NSE"} else "United States",
-                currency="INR" if exchange in {"BSE", "NSE"} else "USD",
-          )
+                country=(
+                    "India"
+                    if exchange in {"BSE", "NSE"}
+                    else "United States"
+                ),
+                currency=(
+                    "INR"
+                    if exchange in {"BSE", "NSE"}
+                    else "USD"
+                ),
+            )
 
         # For an unqualified symbol, use Alpha Vantage search.
         results = self.search_company(normalized_symbol)

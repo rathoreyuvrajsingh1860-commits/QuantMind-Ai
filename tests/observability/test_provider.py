@@ -55,3 +55,37 @@ def test_provider_request_metrics_records_success():
     assert metrics.duration_ms == 84.2
     assert metrics.success is True
     assert metrics.error_code is None
+
+def test_provider_request_metrics_records_attempts():
+    metrics = ProviderRequestMetrics(
+        provider="alpha_vantage",
+        operation="price_history",
+    )
+
+    metrics.record_attempt(1)
+    assert metrics.attempts == 1
+    assert metrics.retries == 0
+
+    metrics.record_attempt(2)
+    assert metrics.attempts == 2
+    assert metrics.retries == 1
+
+    metrics.record_attempt(3)
+    assert metrics.attempts == 3
+    assert metrics.retries == 2
+
+
+def test_provider_request_metrics_records_success():
+    metrics = ProviderRequestMetrics(
+        provider="alpha_vantage",
+        operation="price_history",
+    )
+
+    metrics.record_failure("temporary_failure")
+    assert metrics.success is False
+    assert metrics.error_code == "temporary_failure"
+
+    metrics.record_success()
+
+    assert metrics.success is True
+    assert metrics.error_code is None
