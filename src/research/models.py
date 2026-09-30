@@ -48,3 +48,9 @@ class ResearchResult(BaseModel):
     market: MarketResearch
     evidence: list[ResearchEvidence]
     limitations: list[str]
+
+
+class PersistedResearch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    research_run_id: str

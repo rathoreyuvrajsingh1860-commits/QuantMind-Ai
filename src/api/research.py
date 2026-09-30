@@ -3,11 +3,14 @@ from datetime import date
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from src.ai.models import AIResearchResult
 from src.ai.providers import OpenAICompatibleProvider
 from src.ai.service import AIResearchService
 from src.config.settings import settings
-from src.data.service import DataService
 from src.data.market_service import MarketService
+from src.data.service import DataService
+from src.research.models import ResearchResult
+from src.research.repositories.research import ResearchRepository
 from src.research.service import ResearchService
 
 
@@ -25,8 +28,9 @@ class ResearchRequest(BaseModel):
 class ResearchResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    research: object
-    ai_analysis: object | None = None
+    research_run_id: str
+    research: ResearchResult
+    ai_analysis: AIResearchResult | None = None
 
 
 def create_research_service() -> ResearchService:
@@ -51,35 +55,34 @@ def create_ai_research_service() -> AIResearchService | None:
 @router.post("", response_model=ResearchResponse)
 def research(request: ResearchRequest) -> ResearchResponse:
     service = create_research_service()
+    repository = ResearchRepository()
 
     try:
-        result = service.run(
+        result = service.research(
             request.query,
             start=request.start,
             end=request.end,
         )
 
+        ai_result = None
         ai_service = create_ai_research_service()
 
-        if ai_service is None:
-            return ResearchResponse(
-                research=result,
-                ai_analysis=None,
-            )
+        if ai_service is not None:
+            try:
+                ai_result = ai_service.analyze(result)
+            except Exception:
+                # AI failure must not destroy deterministic research.
+                ai_result = None
 
-        try:
-            ai_result = ai_service.analyze(result)
-        except Exception as exc:
-            # Research data remains usable even when the AI layer fails.
-            return ResearchResponse(
-                research=result,
-                ai_analysis={
-                    "error": "AI analysis unavailable",
-                    "detail": str(exc),
-                },
-            )
+        research_run_id = repository.save_research(
+            research=result,
+            prices=service.last_prices,
+            ai_result=ai_result,
+            status="completed",
+        )
 
         return ResearchResponse(
+            research_run_id=str(research_run_id),
             research=result,
             ai_analysis=ai_result,
         )
@@ -89,5 +92,6 @@ def research(request: ResearchRequest) -> ResearchResponse:
             status_code=400,
             detail=str(exc),
         ) from exc
+
     finally:
-        service.market_service.data_service.close()
+        service.close()
