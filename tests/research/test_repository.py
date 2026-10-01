@@ -3,6 +3,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from src.data.models import PriceBar
 from src.research.models import (
     MarketResearch,
     ResearchEntity,
@@ -11,6 +12,7 @@ from src.research.models import (
 )
 from src.research.repositories.research import ResearchRepository
 from src.verification.models import VerificationResult
+
 
 def make_research() -> ResearchResult:
     return ResearchResult(
@@ -63,7 +65,7 @@ def make_db_mocks(fetchone_values):
     return connection, cursor
 
 
-def test_repository_persists_research_run() -> None:
+def test_repository_persists_research_run():
     company_id = uuid4()
     instrument_id = uuid4()
     source_id = uuid4()
@@ -101,7 +103,7 @@ def test_repository_persists_research_run() -> None:
     )
 
 
-def test_repository_creates_evidence_for_prices() -> None:
+def test_repository_creates_evidence_for_prices():
     company_id = uuid4()
     instrument_id = uuid4()
     source_id = uuid4()
@@ -124,8 +126,6 @@ def test_repository_creates_evidence_for_prices() -> None:
             (uuid4(),),  # claim 8
         ]
     )
-
-    from src.data.models import PriceBar
 
     price = PriceBar(
         symbol="RELIANCE:BSE",
@@ -169,7 +169,8 @@ def test_repository_creates_evidence_for_prices() -> None:
         for sql in sql_calls
     )
 
-def test_repository_does_not_create_claims_when_verification_fails() -> None:
+
+def test_repository_does_not_create_claims_when_verification_fails():
     company_id = uuid4()
     instrument_id = uuid4()
     source_id = uuid4()
@@ -184,8 +185,6 @@ def test_repository_does_not_create_claims_when_verification_fails() -> None:
             (uuid4(),),  # evidence ID
         ]
     )
-
-    from src.data.models import PriceBar
 
     price = PriceBar(
         symbol="RELIANCE:BSE",

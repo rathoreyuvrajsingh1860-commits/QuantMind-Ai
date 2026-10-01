@@ -124,11 +124,11 @@ class ResearchRepository:
                 research_run_id: UUID = row[0]
 
                 evidence_ids = self._insert_evidence(
-                cursor,
-                research_run_id=research_run_id,
-                research=research,
-                prices=prices,
-                source_ids=source_ids,
+                    cursor,
+                    research_run_id=research_run_id,
+                    research=research,
+                    prices=prices,
+                    source_ids=source_ids,
                 )
 
                 self._insert_claims(
@@ -369,6 +369,7 @@ class ResearchRepository:
 
             metadata = {
                 "research_run_id": str(research_run_id),
+                "source": bar.source,
                 "symbol": research.entity.symbol,
                 "date": bar.date.isoformat(),
                 "open": str(bar.open),
@@ -451,6 +452,7 @@ class ResearchRepository:
 
         if not evidence_ids:
             return
+
         if verification is not None and not verification.passed:
             return
 
