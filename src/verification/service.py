@@ -1,6 +1,5 @@
-from decimal import Decimal, ROUND_HALF_UP
-
 from src.data.models import PriceBar
+from src.quant.calculations import calculate_market_metrics
 from src.research.models import MarketResearch
 from src.verification.models import (
     VerificationIssue,
@@ -19,71 +18,22 @@ class VerificationService:
     ) -> VerificationResult:
         issues: list[VerificationIssue] = []
 
-        if market.observations != len(prices):
-            issues.append(
-                VerificationIssue(
-                    field="observations",
-                    message=(
-                        f"Expected {len(prices)} observations, "
-                        f"got {market.observations}."
-                    ),
-                )
-            )
-
-        if not prices:
-            return VerificationResult(
-                passed=not issues,
-                issues=issues,
-            )
-
-        first_close = prices[0].close
-        latest_close = prices[-1].close
-        absolute_change = latest_close - first_close
-
-        if first_close != 0:
-            percentage_change = (
-                absolute_change / first_close * Decimal("100")
-            ).quantize(
-                Decimal("0.01"),
-                rounding=ROUND_HALF_UP,
-            )
-        else:
-            percentage_change = None
-
-        period_high = max(bar.high for bar in prices)
-        period_low = min(bar.low for bar in prices)
-
-        average_close = (
-            sum(
-                (bar.close for bar in prices),
-                Decimal("0"),
-            )
-            / len(prices)
-        ).quantize(
-            Decimal("0.01"),
-            rounding=ROUND_HALF_UP,
-        )
-
-        volumes = [
-            bar.volume
-            for bar in prices
-            if bar.volume is not None
-        ]
-
-        total_volume = sum(volumes) if volumes else None
+        metrics = calculate_market_metrics(prices)
 
         expected_values = {
-            "first_close": first_close,
-            "latest_close": latest_close,
-            "absolute_change": absolute_change,
-            "percentage_change": percentage_change,
-            "period_high": period_high,
-            "period_low": period_low,
-            "average_close": average_close,
-            "total_volume": total_volume,
+            "observations": metrics["observations"],
+            "first_close": metrics["first_close"],
+            "latest_close": metrics["latest_close"],
+            "absolute_change": metrics["absolute_change"],
+            "percentage_change": metrics["percentage_change"],
+            "period_high": metrics["period_high"],
+            "period_low": metrics["period_low"],
+            "average_close": metrics["average_close"],
+            "total_volume": metrics["total_volume"],
         }
 
         actual_values = {
+            "observations": market.observations,
             "first_close": market.first_close,
             "latest_close": market.latest_close,
             "absolute_change": market.absolute_change,
@@ -101,9 +51,7 @@ class VerificationService:
                 issues.append(
                     VerificationIssue(
                         field=field,
-                        message=(
-                            f"Expected {expected}, got {actual}."
-                        ),
+                        message=f"Expected {expected}, got {actual}.",
                     )
                 )
 
