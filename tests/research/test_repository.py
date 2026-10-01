@@ -228,3 +228,39 @@ def test_repository_does_not_create_claims_when_verification_fails():
         "INSERT INTO claim_evidence" in sql
         for sql in sql_calls
     )
+
+def test_repository_reuses_existing_data_source():
+    existing_source_id = uuid4()
+
+    connection, cursor = make_db_mocks(
+        [
+            (existing_source_id,),
+        ]
+    )
+
+    research = make_research()
+
+    result = ResearchRepository._ensure_sources(
+        cursor,
+        research=research,
+    )
+
+    assert result == {
+        "alpha_vantage": existing_source_id,
+    }
+
+    sql_calls = [
+        call.args[0]
+        for call in cursor.execute.call_args_list
+    ]
+
+    assert any(
+        "SELECT id" in sql
+        and "FROM data_sources" in sql
+        for sql in sql_calls
+    )
+
+    assert not any(
+        "INSERT INTO data_sources" in sql
+        for sql in sql_calls
+    )
