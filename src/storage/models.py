@@ -201,3 +201,81 @@ class ResearchRun(Base):
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+class ResearchClaim(Base):
+    __tablename__ = "research_claims"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+
+    research_run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    claim_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    claim_text: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    metadata_json: Mapped[dict] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
+class ClaimEvidence(Base):
+    __tablename__ = "claim_evidence"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "claim_id",
+            "evidence_id",
+            "relationship",
+            name="uq_claim_evidence_relationship",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+
+    claim_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("research_claims.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    evidence_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("evidence.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    relationship: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )

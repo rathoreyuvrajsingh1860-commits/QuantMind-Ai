@@ -8,10 +8,12 @@ from src.ai.providers import OpenAICompatibleProvider
 from src.ai.service import AIResearchService
 from src.config.settings import settings
 from src.data.market_service import MarketService
-from src.data.service import DataService
+from src.data.service import create_data_service
 from src.research.models import ResearchResult
 from src.research.repositories.research import ResearchRepository
 from src.research.service import ResearchService
+from src.verification.models import VerificationResult
+from src.verification.service import VerificationService
 
 
 router = APIRouter(prefix="/research", tags=["research"])
@@ -30,11 +32,12 @@ class ResearchResponse(BaseModel):
 
     research_run_id: str
     research: ResearchResult
+    verification: VerificationResult
     ai_analysis: AIResearchResult | None = None
 
 
 def create_research_service() -> ResearchService:
-    data_service = DataService.from_settings()
+    data_service = create_data_service()
     market_service = MarketService(data_service)
     return ResearchService(market_service)
 
@@ -56,6 +59,7 @@ def create_ai_research_service() -> AIResearchService | None:
 def research(request: ResearchRequest) -> ResearchResponse:
     service = create_research_service()
     repository = ResearchRepository()
+    verifier = VerificationService()
 
     try:
         result = service.research(
@@ -64,26 +68,35 @@ def research(request: ResearchRequest) -> ResearchResponse:
             end=request.end,
         )
 
-        ai_result = None
-        ai_service = create_ai_research_service()
+        verification = verifier.verify_market_research(
+            market=result.market,
+            prices=service.last_prices,
+        )
 
-        if ai_service is not None:
-            try:
-                ai_result = ai_service.analyze(result)
-            except Exception:
-                # AI failure must not destroy deterministic research.
-                ai_result = None
+        ai_result = None
+
+        if verification.passed:
+            ai_service = create_ai_research_service()
+
+            if ai_service is not None:
+                try:
+                    ai_result = ai_service.analyze(result)
+                except Exception:
+                    # AI failure must not destroy deterministic research.
+                    ai_result = None
 
         research_run_id = repository.save_research(
             research=result,
             prices=service.last_prices,
+            verification=verification,
             ai_result=ai_result,
-            status="completed",
+            status="completed" if verification.passed else "verification_failed",
         )
 
         return ResearchResponse(
             research_run_id=str(research_run_id),
             research=result,
+            verification=verification,
             ai_analysis=ai_result,
         )
 

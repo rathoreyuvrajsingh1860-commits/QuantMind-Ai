@@ -10,7 +10,7 @@ from src.research.models import (
     ResearchResult,
 )
 from src.research.repositories.research import ResearchRepository
-
+from src.verification.models import VerificationResult
 
 def make_research() -> ResearchResult:
     return ResearchResult(
@@ -113,6 +113,15 @@ def test_repository_creates_evidence_for_prices() -> None:
             (instrument_id,),
             (source_id,),
             (research_run_id,),
+            (uuid4(),),  # evidence ID
+            (uuid4(),),  # claim 1
+            (uuid4(),),  # claim 2
+            (uuid4(),),  # claim 3
+            (uuid4(),),  # claim 4
+            (uuid4(),),  # claim 5
+            (uuid4(),),  # claim 6
+            (uuid4(),),  # claim 7
+            (uuid4(),),  # claim 8
         ]
     )
 
@@ -147,5 +156,76 @@ def test_repository_creates_evidence_for_prices() -> None:
 
     assert any(
         "INSERT INTO evidence" in sql
+        for sql in sql_calls
+    )
+
+    assert any(
+        "INSERT INTO research_claims" in sql
+        for sql in sql_calls
+    )
+
+    assert any(
+        "INSERT INTO claim_evidence" in sql
+        for sql in sql_calls
+    )
+
+def test_repository_does_not_create_claims_when_verification_fails() -> None:
+    company_id = uuid4()
+    instrument_id = uuid4()
+    source_id = uuid4()
+    research_run_id = uuid4()
+
+    connection, cursor = make_db_mocks(
+        [
+            (company_id,),
+            (instrument_id,),
+            (source_id,),
+            (research_run_id,),
+            (uuid4(),),  # evidence ID
+        ]
+    )
+
+    from src.data.models import PriceBar
+
+    price = PriceBar(
+        symbol="RELIANCE:BSE",
+        date=date(2026, 9, 1),
+        open=Decimal("1490"),
+        high=Decimal("1510"),
+        low=Decimal("1480"),
+        close=Decimal("1500"),
+        volume=1000,
+        adjusted_close=Decimal("1500"),
+        source="alpha_vantage",
+        retrieved_at=datetime.now(timezone.utc),
+    )
+
+    verification = VerificationResult(
+        passed=False,
+        issues=[],
+    )
+
+    with patch(
+        "src.research.repositories.research.get_connection",
+        return_value=connection,
+    ):
+        ResearchRepository().save_research(
+            research=make_research(),
+            prices=[price],
+            verification=verification,
+        )
+
+    sql_calls = [
+        call.args[0]
+        for call in cursor.execute.call_args_list
+    ]
+
+    assert not any(
+        "INSERT INTO research_claims" in sql
+        for sql in sql_calls
+    )
+
+    assert not any(
+        "INSERT INTO claim_evidence" in sql
         for sql in sql_calls
     )
