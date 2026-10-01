@@ -1,8 +1,8 @@
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
 
 from src.data.market_service import MarketService
 from src.data.models import PriceBar
+from src.quant.calculations import calculate_market_metrics
 from src.research.models import (
     MarketResearch,
     ResearchEntity,
@@ -62,55 +62,18 @@ class ResearchService:
 
         self.last_prices = prices
 
-        if prices:
-            first_close = prices[0].close
-            latest_close = prices[-1].close
+        metrics = calculate_market_metrics(prices)
 
-            absolute_change = latest_close - first_close
-
-            if first_close != 0:
-                percentage_change = (
-                    absolute_change / first_close * Decimal("100")
-                ).quantize(
-                    Decimal("0.01"),
-                    rounding=ROUND_HALF_UP,
-                )
-            else:
-                percentage_change = None
-
-            period_high = max(bar.high for bar in prices)
-            period_low = min(bar.low for bar in prices)
-
-            average_close = (
-                sum(
-                    (bar.close for bar in prices),
-                    Decimal("0"),
-                )
-                / len(prices)
-            ).quantize(
-                Decimal("0.01"),
-                rounding=ROUND_HALF_UP,
-            )
-
-            volumes = [
-                bar.volume
-                for bar in prices
-                if bar.volume is not None
-            ]
-
-            total_volume = sum(volumes) if volumes else None
-
-        else:
-            first_close = None
-            latest_close = None
-            absolute_change = None
-            percentage_change = None
-            period_high = None
-            period_low = None
-            average_close = None
-            total_volume = None
-
+        first_close = metrics["first_close"]
+        latest_close = metrics["latest_close"]
+        absolute_change = metrics["absolute_change"]
+        percentage_change = metrics["percentage_change"]
+        period_high = metrics["period_high"]
+        period_low = metrics["period_low"]
+        average_close = metrics["average_close"]
+        total_volume = metrics["total_volume"]
         market = MarketResearch(
+
             start=start,
             end=end,
             observations=len(prices),
