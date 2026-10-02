@@ -9,7 +9,9 @@ from src.data.models import PriceBar
 from src.main import app
 from src.research.models import (
     MarketResearch,
+    ResearchCoverage,
     ResearchEntity,
+    ResearchEvidence,
     ResearchResult,
 )
 from src.verification.models import VerificationIssue, VerificationResult
@@ -42,6 +44,13 @@ def make_research() -> ResearchResult:
             period_low=Decimal("1230"),
             average_close=Decimal("1245"),
             total_volume=100000,
+        ),
+        coverage=ResearchCoverage(
+        requested_start=date(2026, 9, 1),
+        requested_end=date(2026, 9, 24),
+        evidence_start=None,
+        evidence_end=None,
+        observations=0,
         ),
         evidence=[],
         limitations=[],

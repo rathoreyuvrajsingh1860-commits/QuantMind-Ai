@@ -39,6 +39,14 @@ class ResearchEvidence(BaseModel):
     retrieved_at: datetime | None = None
     description: str
 
+class ResearchCoverage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requested_start: date
+    requested_end: date
+    evidence_start: date | None = None
+    evidence_end: date | None = None
+    observations: int
 
 class ResearchResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -47,6 +55,7 @@ class ResearchResult(BaseModel):
     entity: ResearchEntity
     market: MarketResearch
     evidence: list[ResearchEvidence]
+    coverage: ResearchCoverage
     limitations: list[str]
 
 

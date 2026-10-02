@@ -8,6 +8,7 @@ from src.ai.models import AIMessage
 from src.ai.service import AIResearchService
 from src.research.models import (
     MarketResearch,
+    ResearchCoverage,
     ResearchEntity,
     ResearchEvidence,
     ResearchResult,
@@ -63,9 +64,15 @@ def make_research() -> ResearchResult:
                 description="Historical market price observation.",
             )
         ],
+        coverage=ResearchCoverage(
+            requested_start=date(2026, 1, 1),
+            requested_end=date(2026, 9, 1),
+            evidence_start=date(2026, 9, 1),
+            evidence_end=date(2026, 9, 1),
+            observations=100,
+        ),
         limitations=[],
     )
-
 
 def test_ai_research_service_returns_structured_analysis() -> None:
     provider = FakeAIProvider(

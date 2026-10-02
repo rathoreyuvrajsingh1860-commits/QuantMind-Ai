@@ -5,6 +5,7 @@ from src.data.models import PriceBar
 from src.quant.calculations import calculate_market_metrics
 from src.research.models import (
     MarketResearch,
+    ResearchCoverage,
     ResearchEntity,
     ResearchEvidence,
     ResearchResult,
@@ -101,6 +102,14 @@ class ResearchService:
 
         limitations: list[str] = []
 
+        coverage = ResearchCoverage(
+        requested_start=start,
+        requested_end=end,
+        evidence_start=prices[0].date if prices else None,
+        evidence_end=prices[-1].date if prices else None,
+        observations=len(prices),
+        )
+
         if not prices:
             limitations.append(
                 "No market observations were available "
@@ -125,6 +134,7 @@ class ResearchService:
             ),
             market=market,
             evidence=evidence,
+            coverage=coverage,
             limitations=limitations,
         )
 

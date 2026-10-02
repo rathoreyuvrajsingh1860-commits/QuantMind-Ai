@@ -6,6 +6,7 @@ from uuid import uuid4
 from src.data.models import PriceBar
 from src.research.models import (
     MarketResearch,
+    ResearchCoverage,
     ResearchEntity,
     ResearchEvidence,
     ResearchResult,
@@ -46,9 +47,15 @@ def make_research() -> ResearchResult:
                 description="Daily market observation.",
             )
         ],
+        coverage=ResearchCoverage(
+            requested_start=date(2026, 1, 1),
+            requested_end=date(2026, 9, 1),
+            evidence_start=date(2026, 9, 1),
+            evidence_end=date(2026, 9, 1),
+            observations=1,
+        ),
         limitations=[],
     )
-
 
 def make_db_mocks(fetchone_values):
     connection = MagicMock()
