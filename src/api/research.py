@@ -175,8 +175,13 @@ def research(request: ResearchRequest) -> ResearchResponse:
     service = create_research_service()
     repository = ResearchRepository()
     verifier = VerificationService()
+    research_run_id: UUID | None = None
 
     try:
+        research_run_id = repository.create_research_run(
+            query=request.query,
+        )
+
         result = service.research(
             request.query,
             start=request.start,
@@ -206,6 +211,7 @@ def research(request: ResearchRequest) -> ResearchResponse:
             verification=verification,
             ai_result=ai_result,
             status="completed" if verification.passed else "verification_failed",
+            research_run_id=research_run_id,
         )
 
         return ResearchResponse(
@@ -220,6 +226,18 @@ def research(request: ResearchRequest) -> ResearchResponse:
             status_code=400,
             detail=str(exc),
         ) from exc
+
+    except Exception:
+        if research_run_id is not None:
+            try:
+                repository.update_research_run_status(
+                    research_run_id,
+                    status="failed",
+                )
+            except Exception:
+                pass
+
+        raise
 
     finally:
         service.close()

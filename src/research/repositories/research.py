@@ -132,6 +132,88 @@ class ResearchRepository:
             ],
         }
 
+    def create_research_run(
+        self,
+        *,
+        query: str,
+        status: str = "running",
+        metadata: dict | None = None,
+    ) -> UUID:
+        """Create a research-run lifecycle record before execution starts."""
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO research_runs (
+                        query,
+                        status,
+                        started_at,
+                        metadata_json
+                    )
+                    VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        %s
+                    )
+                    RETURNING id
+                    """,
+                    (
+                        query,
+                        status,
+                        datetime.now(timezone.utc),
+                        Jsonb(metadata or {}),
+                    ),
+                )
+
+                row = cursor.fetchone()
+
+                if row is None:
+                    raise RuntimeError(
+                        "Failed to create research run"
+                    )
+
+            connection.commit()
+
+        return row[0]
+
+    def update_research_run_status(
+        self,
+        research_run_id: UUID,
+        *,
+        status: str,
+        metadata: dict | None = None,
+    ) -> None:
+        """Update research-run lifecycle status and completion metadata."""
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE research_runs
+                    SET
+                        status = %s,
+                        completed_at = %s,
+                        metadata_json = COALESCE(
+                            metadata_json,
+                            '{}'::jsonb
+                        ) || %s
+                    WHERE id = %s
+                    """,
+                    (
+                        status,
+                        datetime.now(timezone.utc),
+                        Jsonb(metadata or {}),
+                        research_run_id,
+                    ),
+                )
+
+                if cursor.rowcount != 1:
+                    raise RuntimeError(
+                        f"Research run not found: {research_run_id}"
+                    )
+
+            connection.commit()
+
     def save_research(
         self,
         *,
@@ -140,6 +222,7 @@ class ResearchRepository:
         verification: VerificationResult | None = None,
         ai_result: AIResearchResult | None = None,
         status: str = "completed",
+        research_run_id: UUID | None = None,
     ) -> UUID:
         """
         Persist a complete research run and its evidence atomically.
@@ -197,53 +280,86 @@ class ResearchRepository:
                     ),
                 }
 
-                cursor.execute(
-                    """
-                    INSERT INTO research_runs (
-                        company_id,
-                        instrument_id,
-                        query,
-                        status,
-                        model,
-                        answer,
-                        started_at,
-                        completed_at,
-                        metadata_json
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s
-                    )
-                    RETURNING id
-                    """,
-                    (
-                        company_id,
-                        instrument_id,
-                        research.query,
-                        status,
-                        model,
-                        answer,
-                        now,
-                        now,
-                        Jsonb(metadata),
-                    ),
-                )
-
-                row = cursor.fetchone()
-
-                if row is None:
-                    raise RuntimeError(
-                        "Failed to create research run"
+                if research_run_id is None:
+                    cursor.execute(
+                        """
+                        INSERT INTO research_runs (
+                            company_id,
+                            instrument_id,
+                            query,
+                            status,
+                            model,
+                            answer,
+                            started_at,
+                            completed_at,
+                            metadata_json
+                        )
+                        VALUES (
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s
+                        )
+                        RETURNING id
+                        """,
+                        (
+                            company_id,
+                            instrument_id,
+                            research.query,
+                            status,
+                            model,
+                            answer,
+                            now,
+                            now,
+                            Jsonb(metadata),
+                        ),
                     )
 
-                research_run_id: UUID = row[0]
+                    row = cursor.fetchone()
+
+                    if row is None:
+                        raise RuntimeError(
+                            "Failed to create research run"
+                        )
+
+                    research_run_id = row[0]
+                else:
+                    cursor.execute(
+                        """
+                        UPDATE research_runs
+                        SET
+                            company_id = %s,
+                            instrument_id = %s,
+                            query = %s,
+                            status = %s,
+                            model = %s,
+                            answer = %s,
+                            completed_at = %s,
+                            metadata_json = %s
+                        WHERE id = %s
+                        """,
+                        (
+                            company_id,
+                            instrument_id,
+                            research.query,
+                            status,
+                            model,
+                            answer,
+                            now,
+                            Jsonb(metadata),
+                            research_run_id,
+                        ),
+                    )
+
+                    if cursor.rowcount != 1:
+                        raise RuntimeError(
+                            f"Research run not found: {research_run_id}"
+                        )
 
                 evidence_ids = self._insert_evidence(
                     cursor,

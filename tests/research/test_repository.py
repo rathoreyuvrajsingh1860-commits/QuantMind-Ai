@@ -287,3 +287,69 @@ def test_repository_reuses_existing_data_source():
         "INSERT INTO data_sources" in sql
         for sql in sql_calls
     )
+
+def test_repository_creates_running_research_run():
+    research_run_id = uuid4()
+
+    connection, cursor = make_db_mocks(
+        [
+            (research_run_id,),
+        ]
+    )
+
+    with patch(
+        "src.research.repositories.research.get_connection",
+        return_value=connection,
+    ):
+        result = ResearchRepository().create_research_run(
+            query="RELIANCE:BSE",
+        )
+
+    assert result == research_run_id
+    connection.commit.assert_called_once()
+
+    insert_calls = [
+        call
+        for call in cursor.execute.call_args_list
+        if "INSERT INTO research_runs" in call.args[0]
+    ]
+
+    assert insert_calls
+
+    parameters = insert_calls[0].args[1]
+
+    assert parameters[0] == "RELIANCE:BSE"
+    assert parameters[1] == "running"
+
+
+def test_repository_updates_research_run_status():
+    research_run_id = uuid4()
+
+    connection, cursor = make_db_mocks([])
+
+    cursor.rowcount = 1
+
+    with patch(
+        "src.research.repositories.research.get_connection",
+        return_value=connection,
+    ):
+        ResearchRepository().update_research_run_status(
+            research_run_id,
+            status="failed",
+            metadata={"error": "provider unavailable"},
+        )
+
+    connection.commit.assert_called_once()
+
+    update_calls = [
+        call
+        for call in cursor.execute.call_args_list
+        if "UPDATE research_runs" in call.args[0]
+    ]
+
+    assert update_calls
+
+    parameters = update_calls[0].args[1]
+
+    assert parameters[0] == "failed"
+    assert parameters[3] == research_run_id

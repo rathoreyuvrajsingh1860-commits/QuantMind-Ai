@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+
+import pytest
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -130,4 +132,43 @@ def test_research_api_skips_ai_when_verification_fails() -> None:
     assert save_kwargs["verification"].passed is False
     assert save_kwargs["status"] == "verification_failed"
 
+    research_service.close.assert_called_once()
+
+def test_research_api_marks_run_failed_on_unexpected_error() -> None:
+    research_run_id = uuid4()
+
+    research_service = MagicMock()
+    research_service.research.side_effect = RuntimeError(
+        "market provider unavailable"
+    )
+
+    repository = MagicMock()
+    repository.create_research_run.return_value = research_run_id
+
+    with (
+        patch(
+            "src.api.research.create_research_service",
+            return_value=research_service,
+        ),
+        patch(
+            "src.api.research.ResearchRepository",
+            return_value=repository,
+        ),
+    ):
+        with pytest.raises(RuntimeError, match="market provider unavailable"):
+            client.post(
+                "/api/research",
+                json={"query": "RELIANCE:BSE"},
+            )
+
+    repository.create_research_run.assert_called_once_with(
+        query="RELIANCE:BSE",
+    )
+
+    repository.update_research_run_status.assert_called_once_with(
+        research_run_id,
+        status="failed",
+    )
+
+    repository.save_research.assert_not_called()
     research_service.close.assert_called_once()
