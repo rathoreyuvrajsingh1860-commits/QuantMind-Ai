@@ -99,15 +99,22 @@ def test_repository_persists_research_run():
     assert result == research_run_id
     connection.commit.assert_called_once()
 
-    sql_calls = [
-        call.args[0]
+    research_run_calls = [
+        call
         for call in cursor.execute.call_args_list
+        if "INSERT INTO research_runs" in call.args[0]
     ]
 
-    assert any(
-        "INSERT INTO research_runs" in sql
-        for sql in sql_calls
-    )
+    assert research_run_calls
+
+    metadata = research_run_calls[0].args[1][-1]
+
+    assert metadata.obj["entity"]["symbol"] == "RELIANCE:BSE"
+    assert metadata.obj["market"]["observations"] == 1
+    assert metadata.obj["coverage"]["observations"] == 1
+    assert metadata.obj["coverage"]["requested_start"] == "2026-01-01"
+    assert metadata.obj["coverage"]["requested_end"] == "2026-09-01"
+    assert metadata.obj["verification"] is None
 
 
 def test_repository_creates_evidence_for_prices():

@@ -16,6 +16,122 @@ from src.verification.models import VerificationResult
 class ResearchRepository:
     """Persistence boundary for QuantMind research runs and evidence."""
 
+    def list_recent_research(
+        self,
+        *,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Return recent research runs ordered by completion time."""
+        if limit < 1:
+            raise ValueError("limit must be at least 1")
+
+        limit = min(limit, 100)
+
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        id,
+                        query,
+                        status,
+                        model,
+                        started_at,
+                        completed_at,
+                        metadata_json
+                    FROM research_runs
+                    ORDER BY COALESCE(completed_at, started_at) DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+
+                rows = cursor.fetchall()
+
+        return [
+            {
+                "id": row[0],
+                "query": row[1],
+                "status": row[2],
+                "model": row[3],
+                "started_at": row[4],
+                "completed_at": row[5],
+                "metadata": row[6],
+            }
+            for row in rows
+        ]
+
+    def get_research(
+        self,
+        research_run_id: UUID,
+    ) -> dict[str, Any] | None:
+        """Return a persisted research run and its evidence."""
+        with get_connection() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        id,
+                        query,
+                        status,
+                        model,
+                        answer,
+                        started_at,
+                        completed_at,
+                        metadata_json
+                    FROM research_runs
+                    WHERE id = %s
+                    """,
+                    (research_run_id,),
+                )
+
+                run = cursor.fetchone()
+
+                if run is None:
+                    return None
+
+                cursor.execute(
+                    """
+                    SELECT
+                        source_id,
+                        title,
+                        source_url,
+                        excerpt,
+                        published_at,
+                        retrieved_at,
+                        metadata_json
+                    FROM evidence
+                    WHERE metadata_json->>'research_run_id' = %s
+                    ORDER BY (metadata_json->>'date')::date ASC
+                    """,
+                    (str(research_run_id),),
+                )
+
+                evidence_rows = cursor.fetchall()
+
+        return {
+            "id": run[0],
+            "query": run[1],
+            "status": run[2],
+            "model": run[3],
+            "answer": run[4],
+            "started_at": run[5],
+            "completed_at": run[6],
+            "metadata": run[7],
+            "evidence": [
+                {
+                    "source_id": row[0],
+                    "title": row[1],
+                    "source_url": row[2],
+                    "excerpt": row[3],
+                    "published_at": row[4],
+                    "retrieved_at": row[5],
+                    "metadata": row[6],
+                }
+                for row in evidence_rows
+            ],
+        }
+
     def save_research(
         self,
         *,
@@ -62,7 +178,13 @@ class ResearchRepository:
                 metadata = {
                     "entity": research.entity.model_dump(mode="json"),
                     "market": research.market.model_dump(mode="json"),
+                    "coverage": research.coverage.model_dump(mode="json"),
                     "limitations": research.limitations,
+                    "verification": (
+                        verification.model_dump(mode="json")
+                        if verification is not None
+                        else None
+                    ),
                     "ai_provider": (
                         ai_result.provider
                         if ai_result is not None

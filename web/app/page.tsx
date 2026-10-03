@@ -1,7 +1,7 @@
 "use client";
 
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 
 type Evidence = {
@@ -14,6 +14,15 @@ type Evidence = {
 
 };
 
+
+type ResearchHistoryItem = {
+  id: string;
+  query: string;
+  status: string;
+  model: string | null;
+  started_at: string;
+  completed_at: string | null;
+};
 
 type ResearchResponse = {
 
@@ -187,6 +196,60 @@ export default function Home() {
 
   const [error, setError] = useState("");
 
+  const [history, setHistory] = useState<ResearchHistoryItem[]>([]);
+
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+
+  async function loadHistory() {
+    try {
+      const response = await fetch(`${API_URL}/history?limit=8`);
+
+      if (!response.ok) {
+        throw new Error(`History request failed (${response.status})`);
+      }
+
+      const data: ResearchHistoryItem[] = await response.json();
+      setHistory(data);
+    } catch {
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadHistory();
+  }, []);
+
+  async function loadResearchRun(id: string) {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_URL}/${id}`);
+
+      if (!response.ok) {
+        throw new Error(`Unable to load research run (${response.status})`);
+      }
+
+      const data: ResearchResponse = await response.json();
+      setResult(data);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load the saved research run.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function runResearch(event?: FormEvent) {
 
@@ -235,6 +298,7 @@ export default function Home() {
       const data: ResearchResponse = await response.json();
 
       setResult(data);
+      await loadHistory();
 
     } catch (err) {
 
@@ -455,6 +519,68 @@ export default function Home() {
 
           </div>
 
+
+          <section className="mt-8">
+            <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/35">
+                    Recent research
+                  </p>
+                  <p className="mt-1 text-xs text-black/40">
+                    Previously completed research runs.
+                  </p>
+                </div>
+
+                <span className="text-[10px] text-black/30">
+                  {history.length} runs
+                </span>
+              </div>
+
+              <div className="mt-4 divide-y divide-black/[0.06]">
+                {historyLoading ? (
+                  <div className="py-4 text-xs text-black/35">
+                    Loading research history...
+                  </div>
+                ) : history.length ? (
+                  history.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => void loadResearchRun(item.id)}
+                      disabled={loading}
+                      className="flex w-full flex-col gap-2 py-3 text-left transition hover:bg-black/[0.02] sm:flex-row sm:items-center sm:justify-between disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-mono text-xs font-medium text-black/70">
+                          {item.query}
+                        </p>
+                        <p className="mt-1 text-[10px] text-black/35">
+                          {formatDate(item.completed_at ?? item.started_at)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-700">
+                          {item.status}
+                        </span>
+
+                        {item.model && (
+                          <span className="max-w-[240px] truncate rounded-full bg-black/[0.04] px-2.5 py-1 text-[10px] text-black/40">
+                            {item.model}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-4 text-xs text-black/35">
+                    No previous research runs yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
 
           {error && (
 
