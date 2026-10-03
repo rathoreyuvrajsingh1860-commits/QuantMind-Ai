@@ -105,41 +105,43 @@ def ingest_price_history(
                 )
                 instrument_id = cursor.fetchone()[0]
 
-            # Insert price history.
-            inserted = 0
+            # Insert price history in one batched database operation.
+            price_rows = [
+                (
+                    instrument_id,
+                    bar.date,
+                    bar.open,
+                    bar.high,
+                    bar.low,
+                    bar.close,
+                    bar.volume,
+                    bar.adjusted_close,
+                    bar.source,
+                )
+                for bar in price_bars
+            ]
 
-            for bar in price_bars:
-                cursor.execute(
-                    """
-                    INSERT INTO price_history
-                        (
-                            instrument_id,
-                            price_date,
-                            open,
-                            high,
-                            low,
-                            close,
-                            volume,
-                            adjusted_close,
-                            source
-                        )
-                    VALUES
-                        (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT DO NOTHING
-                    """,
+            cursor.executemany(
+                """
+                INSERT INTO price_history
                     (
                         instrument_id,
-                        bar.date,
-                        bar.open,
-                        bar.high,
-                        bar.low,
-                        bar.close,
-                        bar.volume,
-                        bar.adjusted_close,
-                        bar.source,
-                    ),
-                )
+                        price_date,
+                        open,
+                        high,
+                        low,
+                        close,
+                        volume,
+                        adjusted_close,
+                        source
+                    )
+                VALUES
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                price_rows,
+            )
 
-                inserted += cursor.rowcount
+            inserted = cursor.rowcount
 
     return inserted

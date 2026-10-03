@@ -362,7 +362,11 @@ class ResearchRepository:
         Returns the evidence IDs created for the research run.
         """
 
-        evidence_ids: list[UUID] = []
+        if not prices:
+            return []
+
+        values_sql = []
+        parameters: list[Any] = []
 
         for bar in prices:
             source_id = source_ids.get(bar.source)
@@ -384,29 +388,12 @@ class ResearchRepository:
                 ),
             }
 
-            cursor.execute(
-                """
-                INSERT INTO evidence (
-                    source_id,
-                    title,
-                    source_url,
-                    excerpt,
-                    published_at,
-                    retrieved_at,
-                    metadata_json
-                )
-                VALUES (
-                    %s,
-                    %s,
-                    NULL,
-                    %s,
-                    NULL,
-                    %s,
-                    %s
-                )
-                RETURNING id
-                """,
-                (
+            values_sql.append(
+                "(%s, %s, NULL, %s, NULL, %s, %s)"
+            )
+
+            parameters.extend(
+                [
                     source_id,
                     (
                         f"{research.entity.symbol} market data "
@@ -420,15 +407,33 @@ class ResearchRepository:
                     ),
                     bar.retrieved_at,
                     Jsonb(metadata),
-                ),
+                ]
             )
 
-            row = cursor.fetchone()
+        cursor.execute(
+            f"""
+            INSERT INTO evidence (
+                source_id,
+                title,
+                source_url,
+                excerpt,
+                published_at,
+                retrieved_at,
+                metadata_json
+            )
+            VALUES {", ".join(values_sql)}
+            RETURNING id
+            """,
+            parameters,
+        )
 
-            if row is None:
-                raise RuntimeError("Failed to create evidence")
+        rows = cursor.fetchall()
+        evidence_ids = [row[0] for row in rows]
 
-            evidence_ids.append(row[0])
+        if len(evidence_ids) != len(prices):
+            raise RuntimeError(
+                "Evidence insert returned an unexpected number of IDs"
+            )
 
         return evidence_ids
 
@@ -570,28 +575,32 @@ class ResearchRepository:
 
             claim_id = row[0]
 
-            for evidence_id in evidence_ids:
-                cursor.execute(
-                    """
-                    INSERT INTO claim_evidence (
-                        claim_id,
-                        evidence_id,
-                        relationship
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        %s
-                    )
-                    ON CONFLICT (
-                        claim_id,
-                        evidence_id,
-                        relationship
-                    ) DO NOTHING
-                    """,
-                    (
-                        claim_id,
-                        evidence_id,
-                        "supports",
-                    ),
+            claim_evidence_rows = [
+                (
+                    claim_id,
+                    evidence_id,
+                    "supports",
                 )
+                for evidence_id in evidence_ids
+            ]
+
+            cursor.executemany(
+                """
+                INSERT INTO claim_evidence (
+                claim_id,
+                evidence_id,
+                relationship
+                )
+                VALUES (
+                %s,
+                %s,
+                %s
+                )
+                ON CONFLICT (
+                claim_id,
+                evidence_id,
+                relationship
+                ) DO NOTHING
+                """,
+                claim_evidence_rows,
+            )

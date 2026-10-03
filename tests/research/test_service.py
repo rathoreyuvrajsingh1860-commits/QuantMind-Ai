@@ -95,3 +95,20 @@ def test_research_service_rejects_empty_query():
         assert str(exc) == "Research query cannot be empty"
     else:
         raise AssertionError("Expected ValueError")
+
+def test_research_service_reports_actual_evidence_coverage():
+    service = ResearchService(
+        FakeMarketService()
+    )
+
+    result = service.research(
+        "RELIANCE:BSE",
+        start=date(2026, 1, 1),
+        end=date(2026, 9, 1),
+    )
+
+    assert result.coverage.requested_start == date(2026, 1, 1)
+    assert result.coverage.requested_end == date(2026, 9, 1)
+    assert result.coverage.evidence_start == date(2026, 1, 1)
+    assert result.coverage.evidence_end == date(2026, 6, 1)
+    assert result.coverage.observations == result.market.observations

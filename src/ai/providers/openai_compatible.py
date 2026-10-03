@@ -51,6 +51,9 @@ class OpenAICompatibleProvider(AIProvider):
                 },
             ],
             "temperature": 0.1,
+            "response_format": {
+                "type": "json_object",
+            },
         }
 
         try:
@@ -61,7 +64,7 @@ class OpenAICompatibleProvider(AIProvider):
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=self.timeout,
+                timeout=httpx.Timeout(self.timeout, connect=10.0),
             )
         except httpx.HTTPError as exc:
             raise AIProviderError(

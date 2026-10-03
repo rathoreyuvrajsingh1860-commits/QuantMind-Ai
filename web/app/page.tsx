@@ -81,6 +81,20 @@ type ResearchResponse = {
 
     };
 
+    coverage: {
+
+      requested_start: string;
+
+      requested_end: string;
+
+      evidence_start: string | null;
+
+      evidence_end: string | null;
+
+      observations: number;
+
+    };
+
     evidence: Evidence[];
 
     limitations: string[];
@@ -911,6 +925,48 @@ export default function Home() {
                     Source-backed market observations used in this research run.
 
                   </p>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+                    <div className="rounded-xl border border-black/[0.06] bg-black/[0.015] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/35">
+                        Requested period
+                      </p>
+
+                      <p className="mt-1 text-xs font-medium text-black/70">
+                        {formatDate(result.research.coverage.requested_start)}
+                        {" → "}
+                        {formatDate(result.research.coverage.requested_end)}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-black/[0.06] bg-black/[0.015] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/35">
+                        Evidence period
+                      </p>
+
+                      <p className="mt-1 text-xs font-medium text-black/70">
+                        {result.research.coverage.evidence_start
+                          ? formatDate(result.research.coverage.evidence_start)
+                          : "No evidence"}
+                        {" → "}
+                        {result.research.coverage.evidence_end
+                          ? formatDate(result.research.coverage.evidence_end)
+                          : "No evidence"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-black/[0.06] bg-black/[0.015] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-black/35">
+                        Observations
+                      </p>
+
+                      <p className="mt-1 text-xs font-medium text-black/70">
+                        {result.research.coverage.observations.toLocaleString()}
+                      </p>
+                    </div>
+
+                  </div>
 
 
                   <div className="mt-5 max-h-[420px] space-y-2 overflow-auto pr-1">

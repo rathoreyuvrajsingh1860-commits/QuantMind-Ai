@@ -21,6 +21,9 @@ def test_create_alpha_vantage_provider():
     with patch(
         "src.data.service.settings.financial_data_provider",
         "alpha_vantage",
+    ), patch(
+        "src.data.service.settings.financial_data_provider_fallbacks",
+        "",
     ), patch.dict(
         "src.data.service.PROVIDER_REGISTRY",
         {"alpha_vantage": mock_provider},

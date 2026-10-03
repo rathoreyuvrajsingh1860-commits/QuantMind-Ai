@@ -115,6 +115,7 @@ def test_repository_creates_evidence_for_prices():
     instrument_id = uuid4()
     source_id = uuid4()
     research_run_id = uuid4()
+    evidence_id = uuid4()
 
     connection, cursor = make_db_mocks(
         [
@@ -122,7 +123,7 @@ def test_repository_creates_evidence_for_prices():
             (instrument_id,),
             (source_id,),
             (research_run_id,),
-            (uuid4(),),  # evidence ID
+            (evidence_id,),  # evidence ID
             (uuid4(),),  # claim 1
             (uuid4(),),  # claim 2
             (uuid4(),),  # claim 3
@@ -133,6 +134,7 @@ def test_repository_creates_evidence_for_prices():
             (uuid4(),),  # claim 8
         ]
     )
+    cursor.fetchall.return_value = [(evidence_id,)]
 
     price = PriceBar(
         symbol="RELIANCE:BSE",
@@ -171,9 +173,14 @@ def test_repository_creates_evidence_for_prices():
         for sql in sql_calls
     )
 
+    executemany_sql_calls = [
+    call.args[0]
+    for call in cursor.executemany.call_args_list
+    ]
+
     assert any(
-        "INSERT INTO claim_evidence" in sql
-        for sql in sql_calls
+    "INSERT INTO claim_evidence" in sql
+    for sql in executemany_sql_calls
     )
 
 
@@ -182,6 +189,7 @@ def test_repository_does_not_create_claims_when_verification_fails():
     instrument_id = uuid4()
     source_id = uuid4()
     research_run_id = uuid4()
+    evidence_id = uuid4()
 
     connection, cursor = make_db_mocks(
         [
@@ -189,9 +197,10 @@ def test_repository_does_not_create_claims_when_verification_fails():
             (instrument_id,),
             (source_id,),
             (research_run_id,),
-            (uuid4(),),  # evidence ID
+            (evidence_id,),  # evidence ID
         ]
     )
+    cursor.fetchall.return_value = [(evidence_id,)]
 
     price = PriceBar(
         symbol="RELIANCE:BSE",

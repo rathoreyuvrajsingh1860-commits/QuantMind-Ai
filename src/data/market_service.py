@@ -3,6 +3,7 @@ from datetime import date
 from src.data.ingestion import ingest_price_history
 from src.data.models import CompanyProfile, PriceBar
 from src.data.service import DataService
+from src.data.trading_calendar import get_expected_trading_dates
 from src.storage.repositories.market import MarketRepository
 
 
@@ -62,26 +63,47 @@ class MarketService:
             if coverage is not None:
                 earliest, latest = coverage
 
-                if earliest <= start and latest >= end:
+                expected_dates = get_expected_trading_dates(
+                    start,
+                    end,
+                )
+
+                if expected_dates:
+                    latest_expected = expected_dates[-1]
+
+                    # Only treat dates inside the stored coverage window as
+                    # internal gaps. Dates before `earliest` may simply be
+                    # unavailable because the provider returned limited history.
+                    coverage_start = max(start, earliest)
+
                     missing_dates = (
                         self.repository.get_missing_expected_price_dates(
                             instrument_id,
-                            start,
-                            end,
+                            coverage_start,
+                            min(end, latest),
                         )
+                        if coverage_start <= min(end, latest)
+                        else []
                     )
 
-                    if not missing_dates:
+                    # If the stored data reaches the latest expected trading
+                    # day and has no internal gaps, reuse it without another
+                    # provider request.
+                    if (
+                        latest >= latest_expected
+                        and not missing_dates
+                    ):
                         stored = self.repository.get_price_history(
                             instrument_id,
                             start,
                             end,
                         )
 
-                        return self._rows_to_price_bars(
-                            symbol,
-                            stored,
-                        )
+                        if stored:
+                            return self._rows_to_price_bars(
+                                symbol,
+                                stored,
+                            )
 
         # Coverage is absent, incomplete, or contains an expected gap.
         ingest_price_history(
