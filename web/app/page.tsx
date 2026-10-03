@@ -40,7 +40,7 @@ type ResearchResponse = {
 
     }[];
 
-  };
+  } | null;
 
   research: {
 
@@ -652,11 +652,15 @@ export default function Home() {
 
                   className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-medium ${
 
-                  result.verification.passed
+                  result.verification === null
 
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
 
-                    : "border-red-200 bg-red-50 text-red-700"
+                    : result.verification.passed
+
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+
+                      : "border-red-200 bg-red-50 text-red-700"
 
                 }`}
 
@@ -666,22 +670,30 @@ export default function Home() {
 
                     className={`h-1.5 w-1.5 rounded-full ${
 
-                    result.verification.passed
+                    result.verification === null
 
-                      ? "bg-emerald-500"
+                      ? "bg-amber-500"
 
-                      : "bg-red-500"
+                      : result.verification.passed
+
+                        ? "bg-emerald-500"
+
+                        : "bg-red-500"
 
                   }`}
 
                 />
 
 
-                {result.verification.passed
+                {result.verification === null
 
-                    ? "Verified research"
+                    ? "Verification unavailable"
 
-                    : "Verification failed"}
+                    : result.verification.passed
+
+                      ? "Verified research"
+
+                      : "Verification failed"}
 
                 </div>
 

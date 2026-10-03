@@ -45,7 +45,7 @@ class ResearchResponse(BaseModel):
 
     research_run_id: str
     research: ResearchResult
-    verification: VerificationResult
+    verification: VerificationResult | None
     ai_analysis: AIResearchResult | None = None
 
 
@@ -139,14 +139,12 @@ def get_research(research_run_id: str) -> ResearchResponse:
 
     research = ResearchResult.model_validate(research_payload)
 
-    verification = VerificationResult.model_validate(
-        metadata.get(
-            "verification",
-            {
-                "passed": True,
-                "issues": [],
-            },
-        )
+    verification_data = metadata.get("verification")
+
+    verification = (
+        VerificationResult.model_validate(verification_data)
+        if verification_data is not None
+        else None
     )
 
     ai_result = None
