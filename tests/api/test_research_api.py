@@ -172,3 +172,49 @@ def test_research_api_marks_run_failed_on_unexpected_error() -> None:
 
     repository.save_research.assert_not_called()
     research_service.close.assert_called_once()
+
+
+def test_get_research_rejects_running_run() -> None:
+    research_run_id = uuid4()
+
+    repository = MagicMock()
+    repository.get_research.return_value = {
+        "id": research_run_id,
+        "status": "running",
+    }
+
+    with patch(
+        "src.api.research.ResearchRepository",
+        return_value=repository,
+    ):
+        response = client.get(
+            f"/api/research/{research_run_id}",
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Research run cannot be restored while its status is 'running'"
+    )
+
+
+def test_get_research_rejects_failed_run() -> None:
+    research_run_id = uuid4()
+
+    repository = MagicMock()
+    repository.get_research.return_value = {
+        "id": research_run_id,
+        "status": "failed",
+    }
+
+    with patch(
+        "src.api.research.ResearchRepository",
+        return_value=repository,
+    ):
+        response = client.get(
+            f"/api/research/{research_run_id}",
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Research run cannot be restored while its status is 'failed'"
+    )

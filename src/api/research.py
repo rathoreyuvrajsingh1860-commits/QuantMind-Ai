@@ -117,6 +117,15 @@ def get_research(research_run_id: str) -> ResearchResponse:
             detail="Research run not found",
         )
 
+    if persisted["status"] in {"running", "failed"}:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Research run cannot be restored while its status "
+                f"is '{persisted['status']}'"
+            ),
+        )
+
     metadata = persisted["metadata"]
 
     evidence = [
