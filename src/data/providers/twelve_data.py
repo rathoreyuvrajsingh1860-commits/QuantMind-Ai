@@ -137,6 +137,7 @@ class TwelveDataProvider(FinancialDataProvider):
                 close=Decimal(item["close"]),
                 volume=int(item["volume"]) if item.get("volume") else None,
                 source="twelve_data",
+                source_url="https://twelvedata.com/docs#time-series",
                 retrieved_at=retrieved_at,
             )
             for item in payload.get("values", [])

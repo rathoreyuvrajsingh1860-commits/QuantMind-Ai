@@ -165,6 +165,7 @@ class MarketRepository:
                         volume,
                         adjusted_close,
                         source,
+                        source_url,
                         retrieved_at
                     FROM price_history
                     WHERE instrument_id = %s
@@ -190,7 +191,8 @@ class MarketRepository:
                 "volume": row[5],
                 "adjusted_close": row[6],
                 "source": row[7],
-                "retrieved_at": row[8],
+                "source_url": row[8],
+                "retrieved_at": row[9],
             }
             for row in rows
         ]

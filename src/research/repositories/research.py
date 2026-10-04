@@ -627,7 +627,7 @@ class ResearchRepository:
             }
 
             values_sql.append(
-                "(%s, %s, NULL, %s, NULL, %s, %s)"
+                "(%s, %s, %s, %s, NULL, %s, %s)"
             )
 
             parameters.extend(
@@ -636,6 +636,9 @@ class ResearchRepository:
                     (
                         f"{research.entity.symbol} market data "
                         f"{bar.date.isoformat()}"
+                    ),
+                    (
+                        bar.source_url
                     ),
                     (
                         f"Daily market observation for "

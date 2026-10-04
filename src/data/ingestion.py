@@ -117,6 +117,7 @@ def ingest_price_history(
                     bar.volume,
                     bar.adjusted_close,
                     bar.source,
+                    bar.source_url,
                 )
                 for bar in price_bars
             ]
@@ -133,10 +134,11 @@ def ingest_price_history(
                         close,
                         volume,
                         adjusted_close,
-                        source
+                        source,
+                        source_url
                     )
                 VALUES
-                    (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 """,
                 price_rows,

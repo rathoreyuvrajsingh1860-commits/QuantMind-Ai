@@ -268,6 +268,7 @@ class AlphaVantageProvider(FinancialDataProvider):
                     volume=int(values["5. volume"]),
                     adjusted_close=None,
                     source="alpha_vantage",
+                    source_url="https://www.alphavantage.co/documentation/#daily",
                     retrieved_at=retrieved_at,
                 )
             )

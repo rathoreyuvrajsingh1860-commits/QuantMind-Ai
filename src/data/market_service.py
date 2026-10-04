@@ -37,6 +37,7 @@ class MarketService:
                 volume=row["volume"],
                 adjusted_close=row["adjusted_close"],
                 source=row["source"],
+                source_url=row.get("source_url"),
                 retrieved_at=row["retrieved_at"],
             )
             for row in rows

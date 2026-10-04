@@ -8,6 +8,8 @@ type Evidence = {
 
   source: string;
 
+  source_url: string | null;
+
   retrieved_at: string | null;
 
   description: string;
@@ -1128,11 +1130,26 @@ export default function Home() {
                           </span>
 
 
-                          <span className="text-[10px] text-black/30">
+                          <div className="flex items-center gap-3">
 
-                            {formatDate(item.description.slice(-10))}
+                            {item.source_url ? (
+                              <a
+                                href={item.source_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] font-medium text-black/50 underline decoration-black/20 underline-offset-2 transition hover:text-black"
+                              >
+                                View source
+                              </a>
+                            ) : null}
 
-                          </span>
+                            <span className="text-[10px] text-black/30">
+
+                              {formatDate(item.description.slice(-10))}
+
+                            </span>
+
+                          </div>
 
                         </div>
 

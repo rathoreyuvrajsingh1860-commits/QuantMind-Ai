@@ -91,6 +91,7 @@ class ResearchService:
         evidence = [
             ResearchEvidence(
                 source=bar.source,
+                source_url=bar.source_url,
                 retrieved_at=bar.retrieved_at,
                 description=(
                     f"Daily market data for {profile.symbol} "

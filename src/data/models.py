@@ -28,4 +28,5 @@ class PriceBar(BaseModel):
     volume: int | None = None
     adjusted_close: Decimal | None = None
     source: str
+    source_url: str | None = None
     retrieved_at: datetime

@@ -114,6 +114,10 @@ class PriceHistory(Base):
         nullable=False,
     )
 
+    source_url: Mapped[str | None] = mapped_column(
+        Text,
+    )
+
     retrieved_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

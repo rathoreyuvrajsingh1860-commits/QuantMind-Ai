@@ -36,6 +36,7 @@ class ResearchEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source: str
+    source_url: str | None = None
     retrieved_at: datetime | None = None
     description: str
 
