@@ -218,3 +218,96 @@ def test_get_research_rejects_failed_run() -> None:
     assert response.json()["detail"] == (
         "Research run cannot be restored while its status is 'failed'"
     )
+
+
+def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
+    research_run_id = uuid4()
+
+    repository = MagicMock()
+    repository.get_research.return_value = {
+        "id": research_run_id,
+        "query": "RELIANCE:BSE",
+        "status": "completed",
+        "model": None,
+        "answer": None,
+        "metadata": {
+            "entity": {
+                "symbol": "RELIANCE.BSE",
+                "name": "RELIANCE",
+                "exchange": "BSE",
+                "country": "India",
+                "sector": None,
+                "industry": None,
+                "currency": "INR",
+            },
+            "market": {
+                "start": "2025-10-03",
+                "end": "2026-10-03",
+                "observations": 102,
+                "latest_close": "1166.000000",
+                "first_close": "1388.150000",
+                "absolute_change": "-222.150000",
+                "percentage_change": "-16.00",
+                "period_high": "1427.450000",
+                "period_low": "1161.000000",
+                "average_close": "1298.33",
+                "total_volume": 106769713,
+            },
+            "limitations": [
+                "This research result contains market-data analysis only; it is not investment advice."
+            ],
+        },
+        "evidence": [
+            {
+                "source_id": uuid4(),
+                "title": None,
+                "source_url": None,
+                "excerpt": "First observation",
+                "published_at": None,
+                "retrieved_at": datetime(2026, 9, 30),
+                "metadata": {
+                    "source": "alpha_vantage",
+                    "date": "2026-05-11",
+                },
+            },
+            {
+                "source_id": uuid4(),
+                "title": None,
+                "source_url": None,
+                "excerpt": "Last observation",
+                "published_at": None,
+                "retrieved_at": datetime(2026, 10, 2),
+                "metadata": {
+                    "source": "alpha_vantage",
+                    "date": "2026-10-01",
+                },
+            },
+        ],
+    }
+
+    with patch(
+        "src.api.research.ResearchRepository",
+        return_value=repository,
+    ):
+        response = client.get(
+            f"/api/research/{research_run_id}",
+        )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["verification"] is None
+
+    assert data["research"]["coverage"] == {
+        "requested_start": "2025-10-03",
+        "requested_end": "2026-10-03",
+        "evidence_start": "2026-05-11",
+        "evidence_end": "2026-10-01",
+        "observations": 2,
+    }
+
+    assert (
+        "Historical run predates coverage tracking"
+        in data["research"]["limitations"][-1]
+    )
