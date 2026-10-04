@@ -168,6 +168,7 @@ def test_research_api_marks_run_failed_on_unexpected_error() -> None:
     repository.update_research_run_status.assert_called_once_with(
         research_run_id,
         status="failed",
+        metadata={"error": "market provider unavailable"},
     )
 
     repository.save_research.assert_not_called()

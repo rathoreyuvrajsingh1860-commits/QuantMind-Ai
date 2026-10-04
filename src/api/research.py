@@ -266,12 +266,13 @@ def research(request: ResearchRequest) -> ResearchResponse:
             detail=str(exc),
         ) from exc
 
-    except Exception:
+    except Exception as exc:
         if research_run_id is not None:
             try:
                 repository.update_research_run_status(
                     research_run_id,
                     status="failed",
+                    metadata={"error": str(exc)},
                 )
             except Exception:
                 pass
