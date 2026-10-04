@@ -137,13 +137,42 @@ def get_research(research_run_id: str) -> ResearchResponse:
         for item in persisted["evidence"]
     ]
 
+    market_metadata = metadata["market"]
+
+    coverage = metadata.get("coverage")
+    limitations = list(metadata.get("limitations", []))
+
+    if coverage is None:
+        # Legacy research runs predate persisted coverage metadata.
+        # Reconstruct requested period from the persisted market payload,
+        # but derive evidence coverage from the actual persisted evidence rows.
+        evidence_dates = [
+            item["metadata"].get("date")
+            for item in persisted["evidence"]
+            if item["metadata"].get("date")
+        ]
+
+        coverage = {
+            "requested_start": market_metadata["start"],
+            "requested_end": market_metadata["end"],
+            "evidence_start": evidence_dates[0] if evidence_dates else None,
+            "evidence_end": evidence_dates[-1] if evidence_dates else None,
+            "observations": len(persisted["evidence"]),
+        }
+
+        limitations.append(
+            "Historical run predates coverage tracking; "
+            "requested period was reconstructed from persisted market metadata "
+            "and evidence coverage was derived from persisted evidence rows."
+        )
+
     research_payload = {
         "query": persisted["query"],
         "entity": metadata["entity"],
-        "market": metadata["market"],
-        "coverage": metadata["coverage"],
+        "market": market_metadata,
+        "coverage": coverage,
         "evidence": evidence,
-        "limitations": metadata["limitations"],
+        "limitations": limitations,
     }
 
     research = ResearchResult.model_validate(research_payload)
