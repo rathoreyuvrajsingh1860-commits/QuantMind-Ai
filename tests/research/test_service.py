@@ -6,7 +6,12 @@ from src.research.service import ResearchService
 
 
 class FakeMarketService:
+    def __init__(self):
+        self.profile_symbols = []
+        self.price_history_symbols = []
+
     def get_profile(self, symbol):
+        self.profile_symbols.append(symbol)
         return CompanyProfile(
             symbol="RELIANCE.BSE",
             name="Reliance Industries",
@@ -18,6 +23,8 @@ class FakeMarketService:
         )
 
     def get_price_history(self, symbol, start, end):
+        self.price_history_symbols.append(symbol)
+
         retrieved_at = datetime(
             2026,
             9,
@@ -94,6 +101,8 @@ def test_research_service_normalizes_unqualified_symbol():
     )
 
     assert result.entity.symbol == "RELIANCE.BSE"
+    assert service.market_service.profile_symbols == ["RELIANCE"]
+    assert service.market_service.price_history_symbols == ["RELIANCE.BSE"]
 
 
 def test_research_service_normalizes_explicit_exchange():

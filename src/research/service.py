@@ -40,11 +40,11 @@ class ResearchService:
 
         symbol = normalized_query.upper()
 
-        if ":" not in symbol:
-            symbol = f"{symbol}:BSE"
-        else:
+        if ":" in symbol:
             symbol_part, exchange_part = symbol.split(":", 1)
             symbol = f"{symbol_part.strip()}:{exchange_part.strip()}"
+        else:
+            symbol = symbol.strip()
 
         if start is None or end is None:
             default_start, default_end = self._default_date_range()
@@ -57,9 +57,10 @@ class ResearchService:
             )
 
         profile = self.market_service.get_profile(symbol)
+        resolved_symbol = profile.symbol
 
         prices = self.market_service.get_price_history(
-            symbol,
+            resolved_symbol,
             start,
             end,
         )
