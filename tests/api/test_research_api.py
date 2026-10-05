@@ -134,6 +134,41 @@ def test_research_api_skips_ai_when_verification_fails() -> None:
 
     research_service.close.assert_called_once()
 
+def test_research_api_returns_400_for_ambiguous_company() -> None:
+    research_service = MagicMock()
+    research_service.research.side_effect = ValueError(
+        "Ambiguous company query: RELIANCE. "
+        "Specify an exchange (BSE, NSE)."
+    )
+
+    repository = MagicMock()
+    repository.create_research_run.return_value = uuid4()
+
+    with (
+        patch(
+            "src.api.research.create_research_service",
+            return_value=research_service,
+        ),
+        patch(
+            "src.api.research.ResearchRepository",
+            return_value=repository,
+        ),
+    ):
+        response = client.post(
+            "/api/research",
+            json={"query": "RELIANCE"},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Ambiguous company query: RELIANCE. "
+        "Specify an exchange (BSE, NSE)."
+    )
+
+    repository.save_research.assert_not_called()
+    research_service.close.assert_called_once()
+
+
 def test_research_api_marks_run_failed_on_unexpected_error() -> None:
     research_run_id = uuid4()
 

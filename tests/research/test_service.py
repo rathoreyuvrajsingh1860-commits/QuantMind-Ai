@@ -5,8 +5,29 @@ from src.data.models import CompanyProfile, PriceBar
 from src.research.service import ResearchService
 
 
+class FakeDataService:
+    def search_company(self, query):
+        return [
+            CompanyProfile(
+                symbol="RELIANCE",
+                name="Reliance Industries Ltd.",
+                exchange="NSE",
+                country="India",
+                currency="INR",
+            ),
+            CompanyProfile(
+                symbol="RELIANCE",
+                name="Reliance Industries Ltd.",
+                exchange="BSE",
+                country="India",
+                currency="INR",
+            ),
+        ]
+
+
 class FakeMarketService:
     def __init__(self):
+        self.data_service = FakeDataService()
         self.profile_symbols = []
         self.price_history_symbols = []
 
@@ -91,18 +112,22 @@ def test_research_service_builds_market_research():
     assert result.evidence[0].source == "test-provider"
 
 
-def test_research_service_normalizes_unqualified_symbol():
+def test_research_service_rejects_ambiguous_unqualified_symbol_with_whitespace():
     service = ResearchService(FakeMarketService())
 
-    result = service.research(
-        "  reliance  ",
-        start=date(2026, 1, 1),
-        end=date(2026, 6, 1),
-    )
-
-    assert result.entity.symbol == "RELIANCE.BSE"
-    assert service.market_service.profile_symbols == ["RELIANCE"]
-    assert service.market_service.price_history_symbols == ["RELIANCE.BSE"]
+    try:
+        service.research(
+            "  reliance  ",
+            start=date(2026, 1, 1),
+            end=date(2026, 6, 1),
+        )
+    except ValueError as exc:
+        assert str(exc) == (
+            "Ambiguous company query: RELIANCE. "
+            "Specify an exchange (BSE, NSE)."
+        )
+    else:
+        raise AssertionError("Expected ValueError")
 
 
 def test_research_service_normalizes_explicit_exchange():
@@ -115,6 +140,24 @@ def test_research_service_normalizes_explicit_exchange():
     )
 
     assert result.entity.symbol == "RELIANCE.BSE"
+
+
+def test_research_service_rejects_ambiguous_unqualified_symbol():
+    service = ResearchService(FakeMarketService())
+
+    try:
+        service.research(
+            "RELIANCE",
+            start=date(2026, 1, 1),
+            end=date(2026, 6, 1),
+        )
+    except ValueError as exc:
+        assert str(exc) == (
+            "Ambiguous company query: RELIANCE. "
+            "Specify an exchange (BSE, NSE)."
+        )
+    else:
+        raise AssertionError("Expected ValueError")
 
 
 def test_research_service_rejects_empty_query():

@@ -24,6 +24,50 @@ class ResearchService:
         start = end - timedelta(days=365)
         return start, end
 
+    def _resolve_symbol(self, symbol: str) -> str:
+        """Resolve an unqualified symbol through company search."""
+
+        if ":" in symbol:
+            return symbol
+
+        matches = self.market_service.data_service.search_company(symbol)
+
+        exact_matches = [
+            company
+            for company in matches
+            if company.symbol.upper() == symbol.upper()
+        ]
+
+        if not exact_matches:
+            raise ValueError(
+                f"Company not found: {symbol}"
+            )
+
+        exchanges = {
+            (company.exchange or "").strip().upper()
+            for company in exact_matches
+        }
+
+        if len(exact_matches) > 1 and len(exchanges) != 1:
+            exchange_list = ", ".join(
+                sorted(exchange for exchange in exchanges if exchange)
+            )
+            detail = (
+                f"Specify an exchange ({exchange_list})."
+                if exchange_list
+                else "Specify the exchange."
+            )
+            raise ValueError(
+                f"Ambiguous company query: {symbol}. "
+                f"{detail}"
+            )
+
+        company = exact_matches[0]
+        if company.exchange:
+            return f"{company.symbol}:{company.exchange.upper()}"
+
+        return company.symbol
+
     def research(
         self,
         query: str,
@@ -55,6 +99,8 @@ class ResearchService:
             raise ValueError(
                 "Research start date cannot be after end date"
             )
+
+        symbol = self._resolve_symbol(symbol)
 
         profile = self.market_service.get_profile(symbol)
         resolved_symbol = profile.symbol
