@@ -84,6 +84,30 @@ def test_research_service_builds_market_research():
     assert result.evidence[0].source == "test-provider"
 
 
+def test_research_service_normalizes_unqualified_symbol():
+    service = ResearchService(FakeMarketService())
+
+    result = service.research(
+        "  reliance  ",
+        start=date(2026, 1, 1),
+        end=date(2026, 6, 1),
+    )
+
+    assert result.entity.symbol == "RELIANCE.BSE"
+
+
+def test_research_service_normalizes_explicit_exchange():
+    service = ResearchService(FakeMarketService())
+
+    result = service.research(
+        "  reliance:bse  ",
+        start=date(2026, 1, 1),
+        end=date(2026, 6, 1),
+    )
+
+    assert result.entity.symbol == "RELIANCE.BSE"
+
+
 def test_research_service_rejects_empty_query():
     service = ResearchService(
         FakeMarketService()

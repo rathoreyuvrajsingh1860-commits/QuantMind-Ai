@@ -38,10 +38,13 @@ class ResearchService:
         if not normalized_query:
             raise ValueError("Research query cannot be empty")
 
-        symbol = normalized_query
+        symbol = normalized_query.upper()
 
         if ":" not in symbol:
             symbol = f"{symbol}:BSE"
+        else:
+            symbol_part, exchange_part = symbol.split(":", 1)
+            symbol = f"{symbol_part.strip()}:{exchange_part.strip()}"
 
         if start is None or end is None:
             default_start, default_end = self._default_date_range()
