@@ -6,9 +6,9 @@ from src.data.base import DataCapability
 from src.data.errors import (
     ProviderAuthenticationError,
     ProviderServerError,
-    UnsupportedDataError,
     RateLimitError,
     TemporaryProviderError,
+    UnsupportedDataError,
 )
 from src.data.service import (
     DataService,

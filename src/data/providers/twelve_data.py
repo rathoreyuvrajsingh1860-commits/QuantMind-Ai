@@ -54,23 +54,15 @@ class TwelveDataProvider(FinancialDataProvider):
         try:
             response = self.client.get(path, params=params)
         except httpx.TimeoutException as exc:
-            raise ProviderServerError(
-                "Twelve Data request timed out"
-            ) from exc
+            raise ProviderServerError("Twelve Data request timed out") from exc
         except httpx.RequestError as exc:
-            raise ProviderServerError(
-                "Twelve Data request failed"
-            ) from exc
+            raise ProviderServerError("Twelve Data request failed") from exc
 
         if response.status_code in {401, 403}:
-            raise ProviderAuthenticationError(
-                "Twelve Data authentication failed"
-            )
+            raise ProviderAuthenticationError("Twelve Data authentication failed")
 
         if response.status_code == 429:
-            raise RateLimitError(
-                "Twelve Data rate limit exceeded"
-            )
+            raise RateLimitError("Twelve Data rate limit exceeded")
 
         if response.status_code >= 500:
             raise ProviderServerError(
