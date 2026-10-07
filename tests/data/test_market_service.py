@@ -28,12 +28,12 @@ class FakeDataService:
             PriceBar(
                 symbol="RELIANCE:BSE",
                 date=date(2026, 9, 24),
-                open=Decimal("1238"),
-                high=Decimal("1250"),
-                low=Decimal("1230"),
-                close=Decimal("1245"),
+                open=Decimal(1238),
+                high=Decimal(1250),
+                low=Decimal(1230),
+                close=Decimal(1245),
                 volume=100000,
-                adjusted_close=Decimal("1245"),
+                adjusted_close=Decimal(1245),
                 source="fake_provider",
                 retrieved_at=datetime(2026, 9, 25),
             )
@@ -60,11 +60,7 @@ class FakeRepository:
         return min(dates), max(dates)
 
     def get_price_history(self, instrument_id, start, end):
-        rows = [
-            row
-            for row in self.stored_rows
-            if start <= row["date"] <= end
-        ]
+        rows = [row for row in self.stored_rows if start <= row["date"] <= end]
 
         return sorted(
             rows,
@@ -78,9 +74,7 @@ class FakeRepository:
         end,
     ):
         stored_dates = {
-            row["date"]
-            for row in self.stored_rows
-            if start <= row["date"] <= end
+            row["date"] for row in self.stored_rows if start <= row["date"] <= end
         }
 
         missing = []
@@ -94,16 +88,17 @@ class FakeRepository:
 
         return missing
 
+
 def test_market_service_returns_stored_data_without_provider_fetch():
     stored_rows = [
         {
             "date": date(2026, 9, 24),
-            "open": Decimal("1238"),
-            "high": Decimal("1250"),
-            "low": Decimal("1230"),
-            "close": Decimal("1245"),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
             "volume": 100000,
-            "adjusted_close": Decimal("1245"),
+            "adjusted_close": Decimal(1245),
             "source": "alpha_vantage",
             "retrieved_at": datetime(2026, 9, 25),
         }
@@ -121,7 +116,7 @@ def test_market_service_returns_stored_data_without_provider_fetch():
     )
 
     assert len(result) == 1
-    assert result[0].close == Decimal("1245")
+    assert result[0].close == Decimal(1245)
     assert result[0].source == "alpha_vantage"
 
     # Critical database-first behavior:
@@ -137,12 +132,12 @@ def test_market_service_fetches_when_database_has_no_data():
 
     stored_row = {
         "date": date(2026, 9, 24),
-        "open": Decimal("1238"),
-        "high": Decimal("1250"),
-        "low": Decimal("1230"),
-        "close": Decimal("1245"),
+        "open": Decimal(1238),
+        "high": Decimal(1250),
+        "low": Decimal(1230),
+        "close": Decimal(1245),
         "volume": 100000,
-        "adjusted_close": Decimal("1245"),
+        "adjusted_close": Decimal(1245),
         "source": "fake_provider",
         "retrieved_at": datetime(2026, 9, 25),
     }
@@ -162,30 +157,31 @@ def test_market_service_fetches_when_database_has_no_data():
         )
 
     assert len(result) == 1
-    assert result[0].close == Decimal("1245")
+    assert result[0].close == Decimal(1245)
     assert result[0].source == "fake_provider"
+
 
 def test_market_service_triggers_ingestion_when_internal_gap_exists():
     stored_rows = [
         {
             "date": date(2026, 9, 14),
-            "open": Decimal("100"),
-            "high": Decimal("110"),
-            "low": Decimal("95"),
-            "close": Decimal("105"),
+            "open": Decimal(100),
+            "high": Decimal(110),
+            "low": Decimal(95),
+            "close": Decimal(105),
             "volume": 1000,
-            "adjusted_close": Decimal("105"),
+            "adjusted_close": Decimal(105),
             "source": "fake_provider",
             "retrieved_at": datetime(2026, 9, 25),
         },
         {
             "date": date(2026, 9, 16),
-            "open": Decimal("106"),
-            "high": Decimal("112"),
-            "low": Decimal("103"),
-            "close": Decimal("110"),
+            "open": Decimal(106),
+            "high": Decimal(112),
+            "low": Decimal(103),
+            "close": Decimal(110),
             "volume": 1200,
-            "adjusted_close": Decimal("110"),
+            "adjusted_close": Decimal(110),
             "source": "fake_provider",
             "retrieved_at": datetime(2026, 9, 25),
         },
@@ -200,12 +196,12 @@ def test_market_service_triggers_ingestion_when_internal_gap_exists():
         repository.stored_rows.append(
             {
                 "date": date(2026, 9, 15),
-                "open": Decimal("105"),
-                "high": Decimal("111"),
-                "low": Decimal("102"),
-                "close": Decimal("108"),
+                "open": Decimal(105),
+                "high": Decimal(111),
+                "low": Decimal(102),
+                "close": Decimal(108),
                 "volume": 1100,
-                "adjusted_close": Decimal("108"),
+                "adjusted_close": Decimal(108),
                 "source": "fake_provider",
                 "retrieved_at": datetime(2026, 9, 25),
             }

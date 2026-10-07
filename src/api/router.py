@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-from src.storage.database import get_connection
 from src.api.market import router as market_router
 from src.api.research import router as research_router
+from src.storage.database import get_connection
 
 router = APIRouter(prefix="/api")
 
@@ -20,10 +20,9 @@ def health_check() -> dict[str, str]:
 
 @router.get("/health/database")
 def database_health_check() -> dict[str, str]:
-    with get_connection() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
+    with get_connection() as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
 
     return {
         "status": "ok",

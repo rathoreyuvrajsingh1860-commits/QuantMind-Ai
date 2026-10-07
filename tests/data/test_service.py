@@ -16,18 +16,23 @@ from src.data.service import (
 
 
 def test_create_alpha_vantage_provider():
-    mock_provider = lambda: "alpha-provider"
+    def mock_provider():
+        return "alpha-provider"
 
-    with patch(
-        "src.data.service.settings.financial_data_provider",
-        "alpha_vantage",
-    ), patch(
-        "src.data.service.settings.financial_data_provider_fallbacks",
-        "",
-    ), patch.dict(
-        "src.data.service.PROVIDER_REGISTRY",
-        {"alpha_vantage": mock_provider},
-        clear=True,
+    with (
+        patch(
+            "src.data.service.settings.financial_data_provider",
+            "alpha_vantage",
+        ),
+        patch(
+            "src.data.service.settings.financial_data_provider_fallbacks",
+            "",
+        ),
+        patch.dict(
+            "src.data.service.PROVIDER_REGISTRY",
+            {"alpha_vantage": mock_provider},
+            clear=True,
+        ),
     ):
         result = create_financial_data_provider()
 
@@ -35,15 +40,19 @@ def test_create_alpha_vantage_provider():
 
 
 def test_create_twelve_data_provider():
-    mock_provider = lambda: "twelve-provider"
+    def mock_provider():
+        return "twelve-provider"
 
-    with patch(
-        "src.data.service.settings.financial_data_provider",
-        "twelve_data",
-    ), patch.dict(
-        "src.data.service.PROVIDER_REGISTRY",
-        {"twelve_data": mock_provider},
-        clear=True,
+    with (
+        patch(
+            "src.data.service.settings.financial_data_provider",
+            "twelve_data",
+        ),
+        patch.dict(
+            "src.data.service.PROVIDER_REGISTRY",
+            {"twelve_data": mock_provider},
+            clear=True,
+        ),
     ):
         result = create_financial_data_provider()
 
@@ -51,15 +60,17 @@ def test_create_twelve_data_provider():
 
 
 def test_unknown_provider_raises_error():
-    with patch(
-        "src.data.service.settings.financial_data_provider",
-        "unknown_provider",
-    ):
-        with pytest.raises(
+    with (
+        patch(
+            "src.data.service.settings.financial_data_provider",
+            "unknown_provider",
+        ),
+        pytest.raises(
             ValueError,
             match="Unsupported financial data provider",
-        ):
-            create_financial_data_provider()
+        ),
+    ):
+        create_financial_data_provider()
 
 
 def test_data_service_delegates_to_provider():
@@ -88,9 +99,7 @@ def test_data_service_delegates_to_provider():
     service = DataService(provider)
 
     assert service.search_company("RELIANCE") == ["RELIANCE"]
-    assert service.get_company_profile(
-        "RELIANCE:BSE"
-    ) == "RELIANCE:BSE"
+    assert service.get_company_profile("RELIANCE:BSE") == "RELIANCE:BSE"
     assert service.get_price_history(
         "RELIANCE:BSE",
         "start",
@@ -114,9 +123,7 @@ def test_data_service_falls_back_when_primary_provider_fails():
             }
 
         def get_company_profile(self, symbol):
-            raise TemporaryProviderError(
-                "primary unavailable"
-            )
+            raise TemporaryProviderError("primary unavailable")
 
         def close(self):
             pass
@@ -139,9 +146,7 @@ def test_data_service_falls_back_when_primary_provider_fails():
         fallback_providers=[FallbackProvider()],
     )
 
-    assert service.get_company_profile(
-        "RELIANCE:BSE"
-    ) == "fallback-result"
+    assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
 
 
 def test_data_service_does_not_use_provider_without_capability():
@@ -153,9 +158,7 @@ def test_data_service_does_not_use_provider_without_capability():
             }
 
         def get_company_profile(self, symbol):
-            raise AssertionError(
-                "Provider without capability should not be called"
-            )
+            raise AssertionError("Provider without capability should not be called")
 
         def close(self):
             pass
@@ -203,9 +206,7 @@ def test_data_service_falls_back_on_rate_limit():
         fallback_providers=[FallbackProvider()],
     )
 
-    assert service.get_company_profile(
-        "RELIANCE:BSE"
-    ) == "fallback-result"
+    assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
 
 
 def test_data_service_falls_back_on_server_error():
@@ -240,9 +241,7 @@ def test_data_service_falls_back_on_server_error():
         fallback_providers=[FallbackProvider()],
     )
 
-    assert service.get_company_profile(
-        "RELIANCE:BSE"
-    ) == "fallback-result"
+    assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
 
 
 def test_data_service_does_not_fallback_on_authentication_error():
@@ -254,9 +253,7 @@ def test_data_service_does_not_fallback_on_authentication_error():
             }
 
         def get_company_profile(self, symbol):
-            raise ProviderAuthenticationError(
-                "invalid API key"
-            )
+            raise ProviderAuthenticationError("invalid API key")
 
         def close(self):
             pass
@@ -269,9 +266,7 @@ def test_data_service_does_not_fallback_on_authentication_error():
             }
 
         def get_company_profile(self, symbol):
-            raise AssertionError(
-                "Fallback provider must not be called"
-            )
+            raise AssertionError("Fallback provider must not be called")
 
         def close(self):
             pass
@@ -328,9 +323,7 @@ def test_data_service_records_fallback_metrics():
             }
 
         def get_company_profile(self, symbol):
-            raise TemporaryProviderError(
-                "primary unavailable"
-            )
+            raise TemporaryProviderError("primary unavailable")
 
         def close(self):
             pass
@@ -353,9 +346,7 @@ def test_data_service_records_fallback_metrics():
         fallback_providers=[FallbackProvider()],
     )
 
-    assert service.get_company_profile(
-        "RELIANCE:BSE"
-    ) == "fallback-result"
+    assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
 
     metrics = service.last_request_metrics
 
@@ -376,9 +367,7 @@ def test_data_service_records_non_fallback_failure():
             }
 
         def get_company_profile(self, symbol):
-            raise ProviderAuthenticationError(
-                "invalid API key"
-            )
+            raise ProviderAuthenticationError("invalid API key")
 
         def close(self):
             pass

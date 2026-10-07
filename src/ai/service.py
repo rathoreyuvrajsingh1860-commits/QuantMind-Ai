@@ -5,7 +5,6 @@ from src.ai.base import AIProvider, AIProviderError
 from src.ai.models import AIResearchResult, ResearchAnalysis
 from src.research.models import ResearchResult
 
-
 SYSTEM_PROMPT = """
 You are QuantMind AI's financial research intelligence engine.
 

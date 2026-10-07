@@ -1,5 +1,3 @@
-import json
-
 import httpx
 
 from src.ai.base import AIProvider, AIProviderError
@@ -67,9 +65,7 @@ class OpenAICompatibleProvider(AIProvider):
                 timeout=httpx.Timeout(self.timeout, connect=10.0),
             )
         except httpx.HTTPError as exc:
-            raise AIProviderError(
-                f"AI provider request failed: {exc}"
-            ) from exc
+            raise AIProviderError(f"AI provider request failed: {exc}") from exc
 
         if response.status_code >= 400:
             detail = response.text[:1000]
@@ -81,9 +77,7 @@ class OpenAICompatibleProvider(AIProvider):
             data = response.json()
             content = data["choices"][0]["message"]["content"]
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise AIProviderError(
-                "AI provider returned an invalid response"
-            ) from exc
+            raise AIProviderError("AI provider returned an invalid response") from exc
 
         if isinstance(content, list):
             parts = []

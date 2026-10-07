@@ -1,8 +1,9 @@
 from datetime import date
 from uuid import UUID
 
-from src.storage.database import get_connection
 from src.data.trading_calendar import get_expected_trading_dates
+from src.storage.database import get_connection
+
 
 class MarketRepository:
     """Persistence operations for market data."""
@@ -14,28 +15,27 @@ class MarketRepository:
     ) -> UUID | None:
         """Return the database instrument ID for a symbol."""
 
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT id
                     FROM financial_instruments
                     WHERE symbol = %s
                       AND exchange IS NOT DISTINCT FROM %s
                     LIMIT 1
                     """,
-                    (
-                        symbol,
-                        exchange,
-                    ),
-                )
+                (
+                    symbol,
+                    exchange,
+                ),
+            )
 
-                row = cursor.fetchone()
+            row = cursor.fetchone()
 
-                if row is None:
-                    return None
+            if row is None:
+                return None
 
-                return row[0]
+            return row[0]
 
     def get_price_history_coverage(
         self,
@@ -43,19 +43,18 @@ class MarketRepository:
     ) -> tuple[date, date] | None:
         """Return the earliest and latest stored price dates."""
 
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT
                         MIN(price_date),
                         MAX(price_date)
                     FROM price_history
                     WHERE instrument_id = %s
                     """,
-                    (instrument_id,),
-                )
-                row = cursor.fetchone()
+                (instrument_id,),
+            )
+            row = cursor.fetchone()
 
         if row is None or row[0] is None or row[1] is None:
             return None
@@ -70,27 +69,23 @@ class MarketRepository:
     ) -> list[date]:
         """Return calendar dates with no stored price observation."""
 
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT price_date
                     FROM price_history
                     WHERE instrument_id = %s
                       AND price_date BETWEEN %s AND %s
                     ORDER BY price_date ASC
                     """,
-                    (
-                        instrument_id,
-                        start,
-                        end,
-                    ),
-                )
+                (
+                    instrument_id,
+                    start,
+                    end,
+                ),
+            )
 
-                stored_dates = {
-                    row[0]
-                    for row in cursor.fetchall()
-                }
+            stored_dates = {row[0] for row in cursor.fetchall()}
 
         missing_dates: list[date] = []
 
@@ -100,9 +95,7 @@ class MarketRepository:
             if current not in stored_dates:
                 missing_dates.append(current)
 
-            current = current.fromordinal(
-                current.toordinal() + 1
-            )
+            current = current.fromordinal(current.toordinal() + 1)
 
         return missing_dates
 
@@ -114,35 +107,27 @@ class MarketRepository:
     ) -> list[date]:
         """Return expected trading dates without stored price data."""
 
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT price_date
                     FROM price_history
                     WHERE instrument_id = %s
                       AND price_date BETWEEN %s AND %s
                     ORDER BY price_date ASC
                     """,
-                    (
-                        instrument_id,
-                        start,
-                        end,
-                    ),
-                )
+                (
+                    instrument_id,
+                    start,
+                    end,
+                ),
+            )
 
-                stored_dates = {
-                    row[0]
-                    for row in cursor.fetchall()
-                }
+            stored_dates = {row[0] for row in cursor.fetchall()}
 
         expected_dates = get_expected_trading_dates(start, end)
 
-        return [
-            value
-            for value in expected_dates
-            if value not in stored_dates
-        ]
+        return [value for value in expected_dates if value not in stored_dates]
 
     def get_price_history(
         self,
@@ -152,10 +137,9 @@ class MarketRepository:
     ) -> list[dict]:
         """Return stored price history for an instrument."""
 
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT
                         price_date,
                         open,
@@ -172,14 +156,14 @@ class MarketRepository:
                       AND price_date BETWEEN %s AND %s
                     ORDER BY price_date ASC
                     """,
-                    (
-                        instrument_id,
-                        start,
-                        end,
-                    ),
-                )
+                (
+                    instrument_id,
+                    start,
+                    end,
+                ),
+            )
 
-                rows = cursor.fetchall()
+            rows = cursor.fetchall()
 
         return [
             {

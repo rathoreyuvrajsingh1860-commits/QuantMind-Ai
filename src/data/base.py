@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from enum import StrEnum
 from datetime import date
+from enum import StrEnum
 
 from src.data.models import CompanyProfile, PriceBar
 

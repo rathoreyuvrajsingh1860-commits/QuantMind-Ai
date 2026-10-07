@@ -1,5 +1,6 @@
-from datetime import date
 import json
+from contextlib import suppress
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -16,7 +17,6 @@ from src.research.repositories.research import ResearchRepository
 from src.research.service import ResearchService
 from src.verification.models import VerificationResult
 from src.verification.service import VerificationService
-
 
 router = APIRouter(prefix="/research", tags=["research"])
 
@@ -95,7 +95,6 @@ def research_history(limit: int = 20) -> list[ResearchHistoryItem]:
         )
         for row in rows
     ]
-
 
 
 @router.get("/{research_run_id}", response_model=ResearchResponse)
@@ -209,6 +208,7 @@ def get_research(research_run_id: str) -> ResearchResponse:
         ai_analysis=ai_result,
     )
 
+
 @router.post("", response_model=ResearchResponse)
 def research(request: ResearchRequest) -> ResearchResponse:
     service = create_research_service()
@@ -268,14 +268,12 @@ def research(request: ResearchRequest) -> ResearchResponse:
 
     except Exception as exc:
         if research_run_id is not None:
-            try:
+            with suppress(Exception):
                 repository.update_research_run_status(
                     research_run_id,
                     status="failed",
                     metadata={"error": str(exc)},
                 )
-            except Exception:
-                pass
 
         raise
 

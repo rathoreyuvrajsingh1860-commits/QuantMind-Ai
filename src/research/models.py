@@ -40,6 +40,7 @@ class ResearchEvidence(BaseModel):
     retrieved_at: datetime | None = None
     description: str
 
+
 class ResearchCoverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -48,6 +49,7 @@ class ResearchCoverage(BaseModel):
     evidence_start: date | None = None
     evidence_end: date | None = None
     observations: int
+
 
 class ResearchResult(BaseModel):
     model_config = ConfigDict(extra="forbid")

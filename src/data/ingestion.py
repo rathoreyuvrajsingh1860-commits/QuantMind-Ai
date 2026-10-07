@@ -18,50 +18,49 @@ def ingest_price_history(
     if not price_bars:
         return 0
 
-    with get_connection() as connection:
-        with connection.cursor() as cursor:
-            # Find or create company.
-            cursor.execute(
-                """
+    with get_connection() as connection, connection.cursor() as cursor:
+        # Find or create company.
+        cursor.execute(
+            """
                 SELECT id
                 FROM companies
                 WHERE symbol = %s
                   AND exchange IS NOT DISTINCT FROM %s
                 LIMIT 1
                 """,
-                (
-                    company_profile.symbol,
-                    company_profile.exchange,
-                ),
-            )
+            (
+                company_profile.symbol,
+                company_profile.exchange,
+            ),
+        )
 
-            row = cursor.fetchone()
+        row = cursor.fetchone()
 
-            if row:
-                company_id = row[0]
-            else:
-                cursor.execute(
-                    """
+        if row:
+            company_id = row[0]
+        else:
+            cursor.execute(
+                """
                     INSERT INTO companies
                         (name, symbol, exchange, country, sector, industry)
                     VALUES
                         (%s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (
-                        company_profile.name,
-                        company_profile.symbol,
-                        company_profile.exchange,
-                        company_profile.country,
-                        company_profile.sector,
-                        company_profile.industry,
-                    ),
-                )
-                company_id = cursor.fetchone()[0]
+                (
+                    company_profile.name,
+                    company_profile.symbol,
+                    company_profile.exchange,
+                    company_profile.country,
+                    company_profile.sector,
+                    company_profile.industry,
+                ),
+            )
+            company_id = cursor.fetchone()[0]
 
-            # Find or create financial instrument.
-            cursor.execute(
-                """
+        # Find or create financial instrument.
+        cursor.execute(
+            """
                 SELECT id
                 FROM financial_instruments
                 WHERE company_id = %s
@@ -69,20 +68,20 @@ def ingest_price_history(
                   AND exchange IS NOT DISTINCT FROM %s
                 LIMIT 1
                 """,
-                (
-                    company_id,
-                    company_profile.symbol,
-                    company_profile.exchange,
-                ),
-            )
+            (
+                company_id,
+                company_profile.symbol,
+                company_profile.exchange,
+            ),
+        )
 
-            row = cursor.fetchone()
+        row = cursor.fetchone()
 
-            if row:
-                instrument_id = row[0]
-            else:
-                cursor.execute(
-                    """
+        if row:
+            instrument_id = row[0]
+        else:
+            cursor.execute(
+                """
                     INSERT INTO financial_instruments
                         (
                             company_id,
@@ -95,35 +94,35 @@ def ingest_price_history(
                         (%s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (
-                        company_id,
-                        company_profile.symbol,
-                        company_profile.exchange,
-                        "equity",
-                        company_profile.currency,
-                    ),
-                )
-                instrument_id = cursor.fetchone()[0]
-
-            # Insert price history in one batched database operation.
-            price_rows = [
                 (
-                    instrument_id,
-                    bar.date,
-                    bar.open,
-                    bar.high,
-                    bar.low,
-                    bar.close,
-                    bar.volume,
-                    bar.adjusted_close,
-                    bar.source,
-                    bar.source_url,
-                )
-                for bar in price_bars
-            ]
+                    company_id,
+                    company_profile.symbol,
+                    company_profile.exchange,
+                    "equity",
+                    company_profile.currency,
+                ),
+            )
+            instrument_id = cursor.fetchone()[0]
 
-            cursor.executemany(
-                """
+        # Insert price history in one batched database operation.
+        price_rows = [
+            (
+                instrument_id,
+                bar.date,
+                bar.open,
+                bar.high,
+                bar.low,
+                bar.close,
+                bar.volume,
+                bar.adjusted_close,
+                bar.source,
+                bar.source_url,
+            )
+            for bar in price_bars
+        ]
+
+        cursor.executemany(
+            """
                 INSERT INTO price_history
                     (
                         instrument_id,
@@ -141,9 +140,9 @@ def ingest_price_history(
                     (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 """,
-                price_rows,
-            )
+            price_rows,
+        )
 
-            inserted = cursor.rowcount
+        inserted = cursor.rowcount
 
     return inserted

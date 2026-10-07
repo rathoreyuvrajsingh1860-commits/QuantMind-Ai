@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -31,19 +31,19 @@ def make_research() -> ResearchResult:
             start=date(2026, 1, 1),
             end=date(2026, 9, 1),
             observations=1,
-            latest_close=Decimal("1500"),
-            first_close=Decimal("1500"),
-            absolute_change=Decimal("0"),
-            percentage_change=Decimal("0"),
-            period_high=Decimal("1500"),
-            period_low=Decimal("1500"),
-            average_close=Decimal("1500"),
+            latest_close=Decimal(1500),
+            first_close=Decimal(1500),
+            absolute_change=Decimal(0),
+            percentage_change=Decimal(0),
+            period_high=Decimal(1500),
+            period_low=Decimal(1500),
+            average_close=Decimal(1500),
             total_volume=1000,
         ),
         evidence=[
             ResearchEvidence(
                 source="alpha_vantage",
-                retrieved_at=datetime.now(timezone.utc),
+                retrieved_at=datetime.now(UTC),
                 description="Daily market observation.",
             )
         ],
@@ -56,6 +56,7 @@ def make_research() -> ResearchResult:
         ),
         limitations=[],
     )
+
 
 def make_db_mocks(fetchone_values):
     connection = MagicMock()
@@ -146,14 +147,14 @@ def test_repository_creates_evidence_for_prices():
     price = PriceBar(
         symbol="RELIANCE:BSE",
         date=date(2026, 9, 1),
-        open=Decimal("1490"),
-        high=Decimal("1510"),
-        low=Decimal("1480"),
-        close=Decimal("1500"),
+        open=Decimal(1490),
+        high=Decimal(1510),
+        low=Decimal(1480),
+        close=Decimal(1500),
         volume=1000,
-        adjusted_close=Decimal("1500"),
+        adjusted_close=Decimal(1500),
         source="alpha_vantage",
-        retrieved_at=datetime.now(timezone.utc),
+        retrieved_at=datetime.now(UTC),
     )
 
     with patch(
@@ -165,30 +166,15 @@ def test_repository_creates_evidence_for_prices():
             prices=[price],
         )
 
-    sql_calls = [
-        call.args[0]
-        for call in cursor.execute.call_args_list
-    ]
+    sql_calls = [call.args[0] for call in cursor.execute.call_args_list]
 
-    assert any(
-        "INSERT INTO evidence" in sql
-        for sql in sql_calls
-    )
+    assert any("INSERT INTO evidence" in sql for sql in sql_calls)
 
-    assert any(
-        "INSERT INTO research_claims" in sql
-        for sql in sql_calls
-    )
+    assert any("INSERT INTO research_claims" in sql for sql in sql_calls)
 
-    executemany_sql_calls = [
-    call.args[0]
-    for call in cursor.executemany.call_args_list
-    ]
+    executemany_sql_calls = [call.args[0] for call in cursor.executemany.call_args_list]
 
-    assert any(
-    "INSERT INTO claim_evidence" in sql
-    for sql in executemany_sql_calls
-    )
+    assert any("INSERT INTO claim_evidence" in sql for sql in executemany_sql_calls)
 
 
 def test_repository_does_not_create_claims_when_verification_fails():
@@ -212,14 +198,14 @@ def test_repository_does_not_create_claims_when_verification_fails():
     price = PriceBar(
         symbol="RELIANCE:BSE",
         date=date(2026, 9, 1),
-        open=Decimal("1490"),
-        high=Decimal("1510"),
-        low=Decimal("1480"),
-        close=Decimal("1500"),
+        open=Decimal(1490),
+        high=Decimal(1510),
+        low=Decimal(1480),
+        close=Decimal(1500),
         volume=1000,
-        adjusted_close=Decimal("1500"),
+        adjusted_close=Decimal(1500),
         source="alpha_vantage",
-        retrieved_at=datetime.now(timezone.utc),
+        retrieved_at=datetime.now(UTC),
     )
 
     verification = VerificationResult(
@@ -237,25 +223,17 @@ def test_repository_does_not_create_claims_when_verification_fails():
             verification=verification,
         )
 
-    sql_calls = [
-        call.args[0]
-        for call in cursor.execute.call_args_list
-    ]
+    sql_calls = [call.args[0] for call in cursor.execute.call_args_list]
 
-    assert not any(
-        "INSERT INTO research_claims" in sql
-        for sql in sql_calls
-    )
+    assert not any("INSERT INTO research_claims" in sql for sql in sql_calls)
 
-    assert not any(
-        "INSERT INTO claim_evidence" in sql
-        for sql in sql_calls
-    )
+    assert not any("INSERT INTO claim_evidence" in sql for sql in sql_calls)
+
 
 def test_repository_reuses_existing_data_source():
     existing_source_id = uuid4()
 
-    connection, cursor = make_db_mocks(
+    _connection, cursor = make_db_mocks(
         [
             (existing_source_id,),
         ]
@@ -272,21 +250,12 @@ def test_repository_reuses_existing_data_source():
         "alpha_vantage": existing_source_id,
     }
 
-    sql_calls = [
-        call.args[0]
-        for call in cursor.execute.call_args_list
-    ]
+    sql_calls = [call.args[0] for call in cursor.execute.call_args_list]
 
-    assert any(
-        "SELECT id" in sql
-        and "FROM data_sources" in sql
-        for sql in sql_calls
-    )
+    assert any("SELECT id" in sql and "FROM data_sources" in sql for sql in sql_calls)
 
-    assert not any(
-        "INSERT INTO data_sources" in sql
-        for sql in sql_calls
-    )
+    assert not any("INSERT INTO data_sources" in sql for sql in sql_calls)
+
 
 def test_repository_creates_running_research_run():
     research_run_id = uuid4()

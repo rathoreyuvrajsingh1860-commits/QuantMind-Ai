@@ -1,6 +1,5 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from datetime import datetime, timezone
 
 from src.data.models import PriceBar
 from src.quant.calculations import calculate_market_metrics
@@ -24,7 +23,7 @@ def make_price(
         volume=volume,
         adjusted_close=Decimal(close),
         source="alpha_vantage",
-        retrieved_at=datetime.now(timezone.utc),
+        retrieved_at=datetime.now(UTC),
     )
 
 
@@ -50,12 +49,12 @@ def test_calculate_market_metrics() -> None:
 
     assert result == {
         "observations": 2,
-        "first_close": Decimal("100"),
-        "latest_close": Decimal("110"),
-        "absolute_change": Decimal("10"),
+        "first_close": Decimal(100),
+        "latest_close": Decimal(110),
+        "absolute_change": Decimal(10),
         "percentage_change": Decimal("10.00"),
-        "period_high": Decimal("120"),
-        "period_low": Decimal("90"),
+        "period_high": Decimal(120),
+        "period_low": Decimal(90),
         "average_close": Decimal("105.00"),
         "total_volume": 3000,
     }

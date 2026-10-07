@@ -1,11 +1,20 @@
-from datetime import datetime
-from uuid import UUID, uuid4
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import UniqueConstraint
+from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+from sqlalchemy import (
+    BigInteger,
+    Date,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -16,7 +25,9 @@ class Base(DeclarativeBase):
 class Company(Base):
     __tablename__ = "companies"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     symbol: Mapped[str | None] = mapped_column(String(50))
     exchange: Mapped[str | None] = mapped_column(String(50))
@@ -35,7 +46,9 @@ class Company(Base):
 class FinancialInstrument(Base):
     __tablename__ = "financial_instruments"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     company_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
@@ -128,7 +141,9 @@ class PriceHistory(Base):
 class DataSource(Base):
     __tablename__ = "data_sources"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     source_type: Mapped[str] = mapped_column(String(50), nullable=False)
     provider: Mapped[str | None] = mapped_column(String(100))
@@ -141,7 +156,9 @@ class DataSource(Base):
 class ResearchDocument(Base):
     __tablename__ = "research_documents"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     company_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="SET NULL"),
@@ -164,7 +181,9 @@ class ResearchDocument(Base):
 class Evidence(Base):
     __tablename__ = "evidence"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     document_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("research_documents.id", ondelete="SET NULL"),
@@ -187,7 +206,9 @@ class Evidence(Base):
 class ResearchRun(Base):
     __tablename__ = "research_runs"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
     company_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="SET NULL"),
@@ -205,6 +226,7 @@ class ResearchRun(Base):
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
 
 class ResearchClaim(Base):
     __tablename__ = "research_claims"

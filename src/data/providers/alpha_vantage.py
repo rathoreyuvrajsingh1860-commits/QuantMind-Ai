@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import httpx
@@ -55,23 +55,15 @@ class AlphaVantageProvider(FinancialDataProvider):
                 },
             )
         except httpx.TimeoutException as exc:
-            raise ProviderServerError(
-                "Alpha Vantage request timed out"
-            ) from exc
+            raise ProviderServerError("Alpha Vantage request timed out") from exc
         except httpx.RequestError as exc:
-            raise ProviderServerError(
-                f"Alpha Vantage request failed: {exc}"
-            ) from exc
+            raise ProviderServerError(f"Alpha Vantage request failed: {exc}") from exc
 
         if response.status_code in {401, 403}:
-            raise ProviderAuthenticationError(
-                "Alpha Vantage authentication failed"
-            )
+            raise ProviderAuthenticationError("Alpha Vantage authentication failed")
 
         if response.status_code == 429:
-            raise RateLimitError(
-                "Alpha Vantage rate limit exceeded"
-            )
+            raise RateLimitError("Alpha Vantage rate limit exceeded")
 
         if response.status_code >= 500:
             raise ProviderServerError(
@@ -86,9 +78,7 @@ class AlphaVantageProvider(FinancialDataProvider):
         payload = response.json()
 
         if "Error Message" in payload:
-            raise UnsupportedDataError(
-                payload["Error Message"]
-            )
+            raise UnsupportedDataError(payload["Error Message"])
 
         if "Information" in payload:
             message = payload["Information"]
@@ -142,9 +132,7 @@ class AlphaVantageProvider(FinancialDataProvider):
         suffix = exchange_suffixes.get(exchange)
 
         if suffix is None:
-            raise ValueError(
-                f"Unsupported Alpha Vantage exchange: {exchange}"
-            )
+            raise ValueError(f"Unsupported Alpha Vantage exchange: {exchange}")
 
         return f"{ticker}{suffix}"
 
@@ -194,16 +182,8 @@ class AlphaVantageProvider(FinancialDataProvider):
                 symbol=normalized_symbol,
                 name=ticker.strip(),
                 exchange=exchange_names.get(exchange, exchange),
-                country=(
-                    "India"
-                    if exchange in {"BSE", "NSE"}
-                    else "United States"
-                ),
-                currency=(
-                    "INR"
-                    if exchange in {"BSE", "NSE"}
-                    else "USD"
-                ),
+                country=("India" if exchange in {"BSE", "NSE"} else "United States"),
+                currency=("INR" if exchange in {"BSE", "NSE"} else "USD"),
             )
 
         # For an unqualified symbol, use Alpha Vantage search.
@@ -240,11 +220,9 @@ class AlphaVantageProvider(FinancialDataProvider):
         time_series = payload.get("Time Series (Daily)", {})
 
         if not time_series:
-            raise RuntimeError(
-                f"No daily price data returned for {symbol}"
-            )
+            raise RuntimeError(f"No daily price data returned for {symbol}")
 
-        retrieved_at = datetime.now(timezone.utc)
+        retrieved_at = datetime.now(UTC)
 
         prices: list[PriceBar] = []
 

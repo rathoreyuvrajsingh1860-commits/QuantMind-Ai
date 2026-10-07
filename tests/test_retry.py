@@ -19,15 +19,11 @@ def test_retry_succeeds_after_transient_failures():
         attempts += 1
 
         if attempts < 3:
-            raise TemporaryProviderError(
-                "temporary failure"
-            )
+            raise TemporaryProviderError("temporary failure")
 
         return "success"
 
-    with patch(
-        "src.data.retry.time.sleep"
-    ) as mock_sleep:
+    with patch("src.data.retry.time.sleep") as mock_sleep:
         result = retry_with_backoff(
             operation,
             max_attempts=3,
@@ -47,22 +43,20 @@ def test_retry_raises_after_max_attempts():
     def operation():
         nonlocal attempts
         attempts += 1
-        raise ProviderServerError(
-            "server unavailable"
-        )
+        raise ProviderServerError("server unavailable")
 
-    with patch(
-        "src.data.retry.time.sleep"
-    ) as mock_sleep:
-        with pytest.raises(
+    with (
+        patch("src.data.retry.time.sleep") as mock_sleep,
+        pytest.raises(
             ProviderServerError,
             match="server unavailable",
-        ):
-            retry_with_backoff(
-                operation,
-                max_attempts=3,
-                delays=(1.0, 2.0),
-            )
+        ),
+    ):
+        retry_with_backoff(
+            operation,
+            max_attempts=3,
+            delays=(1.0, 2.0),
+        )
 
     assert attempts == 3
     assert mock_sleep.call_count == 2
@@ -74,18 +68,16 @@ def test_rate_limit_is_not_retried():
     def operation():
         nonlocal attempts
         attempts += 1
-        raise RateLimitError(
-            "rate limited"
-        )
+        raise RateLimitError("rate limited")
 
-    with patch(
-        "src.data.retry.time.sleep"
-    ) as mock_sleep:
-        with pytest.raises(
+    with (
+        patch("src.data.retry.time.sleep") as mock_sleep,
+        pytest.raises(
             RateLimitError,
             match="rate limited",
-        ):
-            retry_with_backoff(operation)
+        ),
+    ):
+        retry_with_backoff(operation)
 
     assert attempts == 1
     mock_sleep.assert_not_called()
@@ -97,18 +89,16 @@ def test_authentication_error_is_not_retried():
     def operation():
         nonlocal attempts
         attempts += 1
-        raise ProviderAuthenticationError(
-            "invalid API key"
-        )
+        raise ProviderAuthenticationError("invalid API key")
 
-    with patch(
-        "src.data.retry.time.sleep"
-    ) as mock_sleep:
-        with pytest.raises(
+    with (
+        patch("src.data.retry.time.sleep") as mock_sleep,
+        pytest.raises(
             ProviderAuthenticationError,
             match="invalid API key",
-        ):
-            retry_with_backoff(operation)
+        ),
+    ):
+        retry_with_backoff(operation)
 
     assert attempts == 1
     mock_sleep.assert_not_called()
@@ -124,20 +114,17 @@ def test_retry_validates_attempt_count():
             max_attempts=0,
         )
 
+
 def test_retry_reports_attempt_numbers():
     attempts = []
 
     def operation():
         if len(attempts) < 2:
-            raise TemporaryProviderError(
-                "temporary failure"
-            )
+            raise TemporaryProviderError("temporary failure")
 
         return "success"
 
-    with patch(
-        "src.data.retry.time.sleep"
-    ):
+    with patch("src.data.retry.time.sleep"):
         result = retry_with_backoff(
             operation,
             max_attempts=3,

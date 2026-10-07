@@ -48,13 +48,13 @@ def make_research() -> ResearchResult:
             start=date(2026, 1, 1),
             end=date(2026, 9, 1),
             observations=100,
-            latest_close=Decimal("1500"),
-            first_close=Decimal("1200"),
-            absolute_change=Decimal("300"),
-            percentage_change=Decimal("25"),
-            period_high=Decimal("1550"),
-            period_low=Decimal("1150"),
-            average_close=Decimal("1350"),
+            latest_close=Decimal(1500),
+            first_close=Decimal(1200),
+            absolute_change=Decimal(300),
+            percentage_change=Decimal(25),
+            period_high=Decimal(1550),
+            period_low=Decimal(1150),
+            average_close=Decimal(1350),
             total_volume=1000000,
         ),
         evidence=[
@@ -73,6 +73,7 @@ def make_research() -> ResearchResult:
         ),
         limitations=[],
     )
+
 
 def test_ai_research_service_returns_structured_analysis() -> None:
     provider = FakeAIProvider(

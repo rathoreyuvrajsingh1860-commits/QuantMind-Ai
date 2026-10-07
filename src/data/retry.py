@@ -1,15 +1,10 @@
 import time
 from collections.abc import Callable
-from typing import TypeVar
 
 from src.data.errors import (
     ProviderServerError,
     TemporaryProviderError,
 )
-
-
-T = TypeVar("T")
-
 
 RETRYABLE_ERRORS = (
     TemporaryProviderError,
@@ -17,7 +12,7 @@ RETRYABLE_ERRORS = (
 )
 
 
-def retry_with_backoff(
+def retry_with_backoff[T](
     operation: Callable[[], T],
     *,
     max_attempts: int = 3,
@@ -53,6 +48,4 @@ def retry_with_backoff(
 
             time.sleep(delays[delay_index])
 
-    raise RuntimeError(
-        "Retry operation failed unexpectedly"
-    ) from last_error
+    raise RuntimeError("Retry operation failed unexpectedly") from last_error

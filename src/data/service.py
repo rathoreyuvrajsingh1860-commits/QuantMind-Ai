@@ -1,15 +1,14 @@
 from datetime import date
 
-from src.data.errors import is_fallback_eligible
 from src.config.settings import settings
 from src.data.base import (
     DataCapability,
     FinancialDataProvider,
 )
+from src.data.errors import is_fallback_eligible
 from src.data.models import CompanyProfile, PriceBar
 from src.data.providers.alpha_vantage import AlphaVantageProvider
 from src.data.providers.twelve_data import TwelveDataProvider
-
 
 PROVIDER_REGISTRY: dict[
     str,
@@ -46,9 +45,7 @@ def create_financial_data_providers() -> list[FinancialDataProvider]:
     provider_names = _provider_names_from_settings()
 
     if not provider_names:
-        raise ValueError(
-            "No financial data provider is configured"
-        )
+        raise ValueError("No financial data provider is configured")
 
     providers: list[FinancialDataProvider] = []
 
@@ -56,9 +53,7 @@ def create_financial_data_providers() -> list[FinancialDataProvider]:
         provider_class = PROVIDER_REGISTRY.get(name)
 
         if provider_class is None:
-            supported = ", ".join(
-                sorted(PROVIDER_REGISTRY)
-            )
+            supported = ", ".join(sorted(PROVIDER_REGISTRY))
             raise ValueError(
                 f"Unsupported financial data provider: {name!r}. "
                 f"Supported providers: {supported}"
@@ -116,10 +111,7 @@ class DataService:
         providers = self._providers_for(capability)
 
         if not providers:
-            raise RuntimeError(
-                f"No configured provider supports "
-                f"{capability.value}"
-            )
+            raise RuntimeError(f"No configured provider supports {capability.value}")
 
         last_error: Exception | None = None
         started_at = perf_counter()
@@ -141,9 +133,7 @@ class DataService:
                 metrics.record_attempt(1)
                 metrics.record_success()
 
-                metrics.duration_ms = (
-                    perf_counter() - provider_started_at
-                ) * 1000
+                metrics.duration_ms = (perf_counter() - provider_started_at) * 1000
 
                 self.last_request_metrics = metrics
 
@@ -160,9 +150,7 @@ class DataService:
 
                 metrics.record_failure(error_code)
 
-                metrics.duration_ms = (
-                    perf_counter() - provider_started_at
-                ) * 1000
+                metrics.duration_ms = (perf_counter() - provider_started_at) * 1000
 
                 if not is_fallback_eligible(exc):
                     self.last_request_metrics = metrics
@@ -170,9 +158,7 @@ class DataService:
 
                 last_error = exc
 
-        total_duration_ms = (
-            perf_counter() - started_at
-        ) * 1000
+        total_duration_ms = (perf_counter() - started_at) * 1000
 
         if last_error is not None:
             metrics.duration_ms = total_duration_ms
@@ -224,6 +210,7 @@ class DataService:
 
             if close is not None:
                 close()
+
 
 def create_data_service() -> DataService:
     """Create the configured financial data service."""

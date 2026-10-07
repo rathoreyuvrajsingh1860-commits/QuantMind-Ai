@@ -4,9 +4,7 @@ from src.data.providers.alpha_vantage import AlphaVantageProvider
 
 
 def test_alpha_vantage_request_uses_retry_wrapper():
-    provider = object.__new__(
-        AlphaVantageProvider
-    )
+    provider = object.__new__(AlphaVantageProvider)
 
     expected = {
         "test": "value",
@@ -35,9 +33,7 @@ def test_alpha_vantage_request_uses_retry_wrapper():
 
 
 def test_alpha_vantage_request_once_uses_http_client():
-    provider = object.__new__(
-        AlphaVantageProvider
-    )
+    provider = object.__new__(AlphaVantageProvider)
 
     provider.client = MagicMock()
 

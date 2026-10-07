@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import httpx
@@ -73,17 +73,13 @@ class TwelveDataProvider(FinancialDataProvider):
         results = self.search_company(ticker)
 
         for company in results:
-            if (
-                company.symbol.upper() == ticker.upper()
-                and (
-                    exchange is None
-                    or (company.exchange or "").upper() == exchange
-                )
+            if company.symbol.upper() == ticker.upper() and (
+                exchange is None or (company.exchange or "").upper() == exchange
             ):
                 return company
 
         raise LookupError(f"Company not found: {symbol}")
-    
+
     def get_price_history(
         self,
         symbol: str,
@@ -118,11 +114,9 @@ class TwelveDataProvider(FinancialDataProvider):
         payload = response.json()
 
         if payload.get("status") != "ok":
-            raise RuntimeError(
-                payload.get("message", "Twelve Data request failed")
-            )
+            raise RuntimeError(payload.get("message", "Twelve Data request failed"))
 
-        retrieved_at = datetime.now(timezone.utc)
+        retrieved_at = datetime.now(UTC)
 
         return [
             PriceBar(
@@ -142,4 +136,3 @@ class TwelveDataProvider(FinancialDataProvider):
             )
             for item in payload.get("values", [])
         ]
-    

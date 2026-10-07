@@ -90,10 +90,7 @@ class MarketService:
                     # If the stored data reaches the latest expected trading
                     # day and has no internal gaps, reuse it without another
                     # provider request.
-                    if (
-                        latest >= latest_expected
-                        and not missing_dates
-                    ):
+                    if latest >= latest_expected and not missing_dates:
                         stored = self.repository.get_price_history(
                             instrument_id,
                             start,
@@ -120,9 +117,7 @@ class MarketService:
         )
 
         if instrument_id is None:
-            raise RuntimeError(
-                f"Instrument was not persisted: {symbol}"
-            )
+            raise RuntimeError(f"Instrument was not persisted: {symbol}")
 
         stored = self.repository.get_price_history(
             instrument_id,

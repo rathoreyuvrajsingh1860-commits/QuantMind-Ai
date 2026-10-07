@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from src.data.models import PriceBar
 
@@ -27,9 +27,7 @@ def calculate_market_metrics(
     absolute_change = latest_close - first_close
 
     if first_close != 0:
-        percentage_change = (
-            absolute_change / first_close * Decimal("100")
-        ).quantize(
+        percentage_change = (absolute_change / first_close * Decimal(100)).quantize(
             Decimal("0.01"),
             rounding=ROUND_HALF_UP,
         )
@@ -42,7 +40,7 @@ def calculate_market_metrics(
     average_close = (
         sum(
             (bar.close for bar in prices),
-            Decimal("0"),
+            Decimal(0),
         )
         / len(prices)
     ).quantize(
@@ -50,11 +48,7 @@ def calculate_market_metrics(
         rounding=ROUND_HALF_UP,
     )
 
-    volumes = [
-        bar.volume
-        for bar in prices
-        if bar.volume is not None
-    ]
+    volumes = [bar.volume for bar in prices if bar.volume is not None]
 
     total_volume = sum(volumes) if volumes else None
 

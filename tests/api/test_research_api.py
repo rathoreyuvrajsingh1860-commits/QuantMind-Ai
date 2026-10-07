@@ -1,10 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-
-import pytest
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from src.data.models import PriceBar
@@ -13,11 +12,9 @@ from src.research.models import (
     MarketResearch,
     ResearchCoverage,
     ResearchEntity,
-    ResearchEvidence,
     ResearchResult,
 )
 from src.verification.models import VerificationIssue, VerificationResult
-
 
 client = TestClient(app)
 
@@ -38,21 +35,21 @@ def make_research() -> ResearchResult:
             start=date(2026, 9, 1),
             end=date(2026, 9, 24),
             observations=1,
-            latest_close=Decimal("1245"),
-            first_close=Decimal("1245"),
-            absolute_change=Decimal("0"),
-            percentage_change=Decimal("0"),
-            period_high=Decimal("1250"),
-            period_low=Decimal("1230"),
-            average_close=Decimal("1245"),
+            latest_close=Decimal(1245),
+            first_close=Decimal(1245),
+            absolute_change=Decimal(0),
+            percentage_change=Decimal(0),
+            period_high=Decimal(1250),
+            period_low=Decimal(1230),
+            average_close=Decimal(1245),
             total_volume=100000,
         ),
         coverage=ResearchCoverage(
-        requested_start=date(2026, 9, 1),
-        requested_end=date(2026, 9, 24),
-        evidence_start=None,
-        evidence_end=None,
-        observations=0,
+            requested_start=date(2026, 9, 1),
+            requested_end=date(2026, 9, 24),
+            evidence_start=None,
+            evidence_end=None,
+            observations=0,
         ),
         evidence=[],
         limitations=[],
@@ -66,12 +63,12 @@ def test_research_api_skips_ai_when_verification_fails() -> None:
         PriceBar(
             symbol="RELIANCE:BSE",
             date=date(2026, 9, 24),
-            open=Decimal("1238"),
-            high=Decimal("1250"),
-            low=Decimal("1230"),
-            close=Decimal("1245"),
+            open=Decimal(1238),
+            high=Decimal(1250),
+            low=Decimal(1230),
+            close=Decimal(1245),
             volume=100000,
-            adjusted_close=Decimal("1245"),
+            adjusted_close=Decimal(1245),
             source="test_provider",
             retrieved_at=datetime(2026, 9, 25),
         )
@@ -134,11 +131,11 @@ def test_research_api_skips_ai_when_verification_fails() -> None:
 
     research_service.close.assert_called_once()
 
+
 def test_research_api_returns_400_for_ambiguous_company() -> None:
     research_service = MagicMock()
     research_service.research.side_effect = ValueError(
-        "Ambiguous company query: RELIANCE. "
-        "Specify an exchange (BSE, NSE)."
+        "Ambiguous company query: RELIANCE. Specify an exchange (BSE, NSE)."
     )
 
     repository = MagicMock()
@@ -161,18 +158,16 @@ def test_research_api_returns_400_for_ambiguous_company() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == (
-        "Ambiguous company query: RELIANCE. "
-        "Specify an exchange (BSE, NSE)."
+        "Ambiguous company query: RELIANCE. Specify an exchange (BSE, NSE)."
     )
 
     repository.save_research.assert_not_called()
     research_service.close.assert_called_once()
 
+
 def test_research_api_returns_400_for_unknown_company() -> None:
     research_service = MagicMock()
-    research_service.research.side_effect = ValueError(
-        "Company not found: UNKNOWN"
-    )
+    research_service.research.side_effect = ValueError("Company not found: UNKNOWN")
 
     repository = MagicMock()
     repository.create_research_run.return_value = uuid4()
@@ -193,20 +188,17 @@ def test_research_api_returns_400_for_unknown_company() -> None:
         )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == (
-        "Company not found: UNKNOWN"
-    )
+    assert response.json()["detail"] == ("Company not found: UNKNOWN")
 
     repository.save_research.assert_not_called()
     research_service.close.assert_called_once()
+
 
 def test_research_api_marks_run_failed_on_unexpected_error() -> None:
     research_run_id = uuid4()
 
     research_service = MagicMock()
-    research_service.research.side_effect = RuntimeError(
-        "market provider unavailable"
-    )
+    research_service.research.side_effect = RuntimeError("market provider unavailable")
 
     repository = MagicMock()
     repository.create_research_run.return_value = research_run_id
@@ -220,12 +212,12 @@ def test_research_api_marks_run_failed_on_unexpected_error() -> None:
             "src.api.research.ResearchRepository",
             return_value=repository,
         ),
+        pytest.raises(RuntimeError, match="market provider unavailable"),
     ):
-        with pytest.raises(RuntimeError, match="market provider unavailable"):
-            client.post(
-                "/api/research",
-                json={"query": "RELIANCE:BSE"},
-            )
+        client.post(
+            "/api/research",
+            json={"query": "RELIANCE:BSE"},
+        )
 
     repository.create_research_run.assert_called_once_with(
         query="RELIANCE:BSE",

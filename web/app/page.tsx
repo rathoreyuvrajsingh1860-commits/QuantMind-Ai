@@ -221,6 +221,9 @@ export default function Home() {
   }
 
   useEffect(() => {
+    // Initial client-side hydration from the external research history API.
+    // State updates occur after the async request resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadHistory();
   }, []);
 

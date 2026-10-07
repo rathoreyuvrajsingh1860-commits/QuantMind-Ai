@@ -56,6 +56,7 @@ def test_provider_request_metrics_records_success():
     assert metrics.success is True
     assert metrics.error_code is None
 
+
 def test_provider_request_metrics_records_attempts():
     metrics = ProviderRequestMetrics(
         provider="alpha_vantage",
@@ -75,7 +76,7 @@ def test_provider_request_metrics_records_attempts():
     assert metrics.retries == 2
 
 
-def test_provider_request_metrics_records_success():
+def test_provider_request_metrics_records_success_after_failure():
     metrics = ProviderRequestMetrics(
         provider="alpha_vantage",
         operation="price_history",

@@ -33,19 +33,14 @@ class ResearchService:
         matches = self.market_service.data_service.search_company(symbol)
 
         exact_matches = [
-            company
-            for company in matches
-            if company.symbol.upper() == symbol.upper()
+            company for company in matches if company.symbol.upper() == symbol.upper()
         ]
 
         if not exact_matches:
-            raise ValueError(
-                f"Company not found: {symbol}"
-            )
+            raise ValueError(f"Company not found: {symbol}")
 
         exchanges = {
-            (company.exchange or "").strip().upper()
-            for company in exact_matches
+            (company.exchange or "").strip().upper() for company in exact_matches
         }
 
         if len(exact_matches) > 1 and len(exchanges) != 1:
@@ -57,10 +52,7 @@ class ResearchService:
                 if exchange_list
                 else "Specify the exchange."
             )
-            raise ValueError(
-                f"Ambiguous company query: {symbol}. "
-                f"{detail}"
-            )
+            raise ValueError(f"Ambiguous company query: {symbol}. {detail}")
 
         company = exact_matches[0]
         if company.exchange:
@@ -96,9 +88,7 @@ class ResearchService:
             end = end or default_end
 
         if start > end:
-            raise ValueError(
-                "Research start date cannot be after end date"
-            )
+            raise ValueError("Research start date cannot be after end date")
 
         symbol = self._resolve_symbol(symbol)
 
@@ -124,7 +114,6 @@ class ResearchService:
         average_close = metrics["average_close"]
         total_volume = metrics["total_volume"]
         market = MarketResearch(
-
             start=start,
             end=end,
             observations=len(prices),
@@ -144,8 +133,7 @@ class ResearchService:
                 source_url=bar.source_url,
                 retrieved_at=bar.retrieved_at,
                 description=(
-                    f"Daily market data for {profile.symbol} "
-                    f"on {bar.date.isoformat()}"
+                    f"Daily market data for {profile.symbol} on {bar.date.isoformat()}"
                 ),
             )
             for bar in prices
@@ -154,17 +142,16 @@ class ResearchService:
         limitations: list[str] = []
 
         coverage = ResearchCoverage(
-        requested_start=start,
-        requested_end=end,
-        evidence_start=prices[0].date if prices else None,
-        evidence_end=prices[-1].date if prices else None,
-        observations=len(prices),
+            requested_start=start,
+            requested_end=end,
+            evidence_start=prices[0].date if prices else None,
+            evidence_end=prices[-1].date if prices else None,
+            observations=len(prices),
         )
 
         if not prices:
             limitations.append(
-                "No market observations were available "
-                "for the requested period."
+                "No market observations were available for the requested period."
             )
 
         limitations.append(

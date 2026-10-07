@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -27,10 +27,9 @@ class ResearchRepository:
 
         limit = min(limit, 100)
 
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT
                         id,
                         query,
@@ -43,10 +42,10 @@ class ResearchRepository:
                     ORDER BY COALESCE(completed_at, started_at) DESC
                     LIMIT %s
                     """,
-                    (limit,),
-                )
+                (limit,),
+            )
 
-                rows = cursor.fetchall()
+            rows = cursor.fetchall()
 
         return [
             {
@@ -66,10 +65,9 @@ class ResearchRepository:
         research_run_id: UUID,
     ) -> dict[str, Any] | None:
         """Return a persisted research run and its evidence."""
-        with get_connection() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
                     SELECT
                         id,
                         query,
@@ -82,16 +80,16 @@ class ResearchRepository:
                     FROM research_runs
                     WHERE id = %s
                     """,
-                    (research_run_id,),
-                )
+                (research_run_id,),
+            )
 
-                run = cursor.fetchone()
+            run = cursor.fetchone()
 
-                if run is None:
-                    return None
+            if run is None:
+                return None
 
-                cursor.execute(
-                    """
+            cursor.execute(
+                """
                     SELECT
                         source_id,
                         title,
@@ -104,10 +102,10 @@ class ResearchRepository:
                     WHERE metadata_json->>'research_run_id' = %s
                     ORDER BY (metadata_json->>'date')::date ASC
                     """,
-                    (str(research_run_id),),
-                )
+                (str(research_run_id),),
+            )
 
-                evidence_rows = cursor.fetchall()
+            evidence_rows = cursor.fetchall()
 
         return {
             "id": run[0],
@@ -161,7 +159,7 @@ class ResearchRepository:
                     (
                         query,
                         status,
-                        datetime.now(timezone.utc),
+                        datetime.now(UTC),
                         Jsonb(metadata or {}),
                     ),
                 )
@@ -169,9 +167,7 @@ class ResearchRepository:
                 row = cursor.fetchone()
 
                 if row is None:
-                    raise RuntimeError(
-                        "Failed to create research run"
-                    )
+                    raise RuntimeError("Failed to create research run")
 
             connection.commit()
 
@@ -201,16 +197,14 @@ class ResearchRepository:
                     """,
                     (
                         status,
-                        datetime.now(timezone.utc),
+                        datetime.now(UTC),
                         Jsonb(metadata or {}),
                         research_run_id,
                     ),
                 )
 
                 if cursor.rowcount != 1:
-                    raise RuntimeError(
-                        f"Research run not found: {research_run_id}"
-                    )
+                    raise RuntimeError(f"Research run not found: {research_run_id}")
 
             connection.commit()
 
@@ -231,7 +225,7 @@ class ResearchRepository:
         application/service layer does not contain SQL.
         """
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         with get_connection() as connection:
             with connection.cursor() as cursor:
@@ -269,15 +263,9 @@ class ResearchRepository:
                         else None
                     ),
                     "ai_provider": (
-                        ai_result.provider
-                        if ai_result is not None
-                        else None
+                        ai_result.provider if ai_result is not None else None
                     ),
-                    "ai_model": (
-                        ai_result.model
-                        if ai_result is not None
-                        else None
-                    ),
+                    "ai_model": (ai_result.model if ai_result is not None else None),
                 }
 
                 if research_run_id is None:
@@ -323,9 +311,7 @@ class ResearchRepository:
                     row = cursor.fetchone()
 
                     if row is None:
-                        raise RuntimeError(
-                            "Failed to create research run"
-                        )
+                        raise RuntimeError("Failed to create research run")
 
                     research_run_id = row[0]
                 else:
@@ -357,9 +343,7 @@ class ResearchRepository:
                     )
 
                     if cursor.rowcount != 1:
-                        raise RuntimeError(
-                            f"Research run not found: {research_run_id}"
-                        )
+                        raise RuntimeError(f"Research run not found: {research_run_id}")
 
                 evidence_ids = self._insert_evidence(
                     cursor,
@@ -514,9 +498,7 @@ class ResearchRepository:
         row = cursor.fetchone()
 
         if row is None:
-            raise RuntimeError(
-                "Failed to create financial instrument"
-            )
+            raise RuntimeError("Failed to create financial instrument")
 
         return row[0]
 
@@ -526,10 +508,7 @@ class ResearchRepository:
         *,
         research: ResearchResult,
     ) -> dict[str, UUID]:
-        source_names = {
-            evidence.source
-            for evidence in research.evidence
-        }
+        source_names = {evidence.source for evidence in research.evidence}
 
         source_ids: dict[str, UUID] = {}
 
@@ -577,9 +556,7 @@ class ResearchRepository:
             row = cursor.fetchone()
 
             if row is None:
-                raise RuntimeError(
-                    f"Failed to create data source: {source_name}"
-                )
+                raise RuntimeError(f"Failed to create data source: {source_name}")
 
             source_ids[source_name] = row[0]
 
@@ -620,26 +597,17 @@ class ResearchRepository:
                 "close": str(bar.close),
                 "volume": bar.volume,
                 "adjusted_close": (
-                    str(bar.adjusted_close)
-                    if bar.adjusted_close is not None
-                    else None
+                    str(bar.adjusted_close) if bar.adjusted_close is not None else None
                 ),
             }
 
-            values_sql.append(
-                "(%s, %s, %s, %s, NULL, %s, %s)"
-            )
+            values_sql.append("(%s, %s, %s, %s, NULL, %s, %s)")
 
             parameters.extend(
                 [
                     source_id,
-                    (
-                        f"{research.entity.symbol} market data "
-                        f"{bar.date.isoformat()}"
-                    ),
-                    (
-                        bar.source_url
-                    ),
+                    (f"{research.entity.symbol} market data {bar.date.isoformat()}"),
+                    (bar.source_url),
                     (
                         f"Daily market observation for "
                         f"{research.entity.symbol} on "
@@ -672,9 +640,7 @@ class ResearchRepository:
         evidence_ids = [row[0] for row in rows]
 
         if len(evidence_ids) != len(prices):
-            raise RuntimeError(
-                "Evidence insert returned an unexpected number of IDs"
-            )
+            raise RuntimeError("Evidence insert returned an unexpected number of IDs")
 
         return evidence_ids
 
@@ -708,8 +674,7 @@ class ResearchRepository:
             claims.append(
                 (
                     "fact",
-                    f"The latest observed closing price was "
-                    f"{market.latest_close}.",
+                    f"The latest observed closing price was {market.latest_close}.",
                     "supported",
                 )
             )
@@ -718,8 +683,7 @@ class ResearchRepository:
             claims.append(
                 (
                     "fact",
-                    f"The first observed closing price was "
-                    f"{market.first_close}.",
+                    f"The first observed closing price was {market.first_close}.",
                     "supported",
                 )
             )
@@ -766,8 +730,7 @@ class ResearchRepository:
             claims.append(
                 (
                     "calculation",
-                    f"The average closing price was "
-                    f"{market.average_close}.",
+                    f"The average closing price was {market.average_close}.",
                     "supported",
                 )
             )

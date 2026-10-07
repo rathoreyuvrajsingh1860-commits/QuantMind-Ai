@@ -9,7 +9,6 @@ from src.api.schemas import (
 from src.data.market_service import MarketService
 from src.data.service import create_data_service
 
-
 router = APIRouter(
     prefix="/market",
     tags=["market"],
