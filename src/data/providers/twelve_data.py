@@ -8,7 +8,15 @@ from src.data.base import (
     DataCapability,
     FinancialDataProvider,
 )
+from src.data.errors import (
+    ProviderAuthenticationError,
+    ProviderInvalidRequestError,
+    ProviderServerError,
+    RateLimitError,
+    UnsupportedDataError,
+)
 from src.data.models import CompanyProfile, PriceBar
+from src.data.retry import retry_with_backoff
 
 
 class TwelveDataProvider(FinancialDataProvider):
@@ -37,17 +45,76 @@ class TwelveDataProvider(FinancialDataProvider):
     def close(self) -> None:
         self.client.close()
 
-    def search_company(self, query: str) -> list[CompanyProfile]:
-        response = self.client.get(
-            "/symbol_search",
-            params={"symbol": query},
-        )
-        response.raise_for_status()
+    def _request_once(
+        self,
+        path: str,
+        *,
+        params: dict[str, str],
+    ) -> dict:
+        try:
+            response = self.client.get(path, params=params)
+        except httpx.TimeoutException as exc:
+            raise ProviderServerError(
+                "Twelve Data request timed out"
+            ) from exc
+        except httpx.RequestError as exc:
+            raise ProviderServerError(
+                "Twelve Data request failed"
+            ) from exc
+
+        if response.status_code in {401, 403}:
+            raise ProviderAuthenticationError(
+                "Twelve Data authentication failed"
+            )
+
+        if response.status_code == 429:
+            raise RateLimitError(
+                "Twelve Data rate limit exceeded"
+            )
+
+        if response.status_code >= 500:
+            raise ProviderServerError(
+                f"Twelve Data server error: HTTP {response.status_code}"
+            )
+
+        if response.status_code >= 400:
+            raise ProviderInvalidRequestError(
+                f"Twelve Data request failed: HTTP {response.status_code}"
+            )
 
         payload = response.json()
 
         if payload.get("status") != "ok":
-            raise RuntimeError(payload.get("message", "Twelve Data request failed"))
+            message = payload.get(
+                "message",
+                "Twelve Data request failed",
+            )
+            if "rate limit" in message.lower():
+                raise RateLimitError(message)
+            raise UnsupportedDataError(message)
+
+        return payload
+
+    def _request(
+        self,
+        path: str,
+        *,
+        params: dict[str, str],
+        on_attempt=None,
+    ) -> dict:
+        return retry_with_backoff(
+            lambda: self._request_once(
+                path,
+                params=params,
+            ),
+            on_attempt=on_attempt,
+        )
+
+    def search_company(self, query: str) -> list[CompanyProfile]:
+        payload = self._request(
+            "/symbol_search",
+            params={"symbol": query},
+        )
 
         return [
             CompanyProfile(
@@ -105,16 +172,10 @@ class TwelveDataProvider(FinancialDataProvider):
         if exchange:
             params["exchange"] = exchange
 
-        response = self.client.get(
+        payload = self._request(
             "/time_series",
             params=params,
         )
-        response.raise_for_status()
-
-        payload = response.json()
-
-        if payload.get("status") != "ok":
-            raise RuntimeError(payload.get("message", "Twelve Data request failed"))
 
         retrieved_at = datetime.now(UTC)
 

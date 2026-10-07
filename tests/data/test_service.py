@@ -6,6 +6,7 @@ from src.data.base import DataCapability
 from src.data.errors import (
     ProviderAuthenticationError,
     ProviderServerError,
+    UnsupportedDataError,
     RateLimitError,
     TemporaryProviderError,
 )
@@ -388,3 +389,38 @@ def test_data_service_records_non_fallback_failure():
     assert metrics.fallback_used is False
     assert metrics.success is False
     assert metrics.error_code == "authentication"
+
+
+def test_data_service_falls_back_on_unsupported_data():
+    class PrimaryProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            raise UnsupportedDataError("symbol unsupported")
+
+        def close(self):
+            pass
+
+    class FallbackProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.COMPANY_PROFILE,
+            }
+
+        def get_company_profile(self, symbol):
+            return "fallback-result"
+
+        def close(self):
+            pass
+
+    service = DataService(
+        PrimaryProvider(),
+        fallback_providers=[FallbackProvider()],
+    )
+
+    assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
