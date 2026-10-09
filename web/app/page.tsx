@@ -16,6 +16,17 @@ type Evidence = {
 
 };
 
+type ResearchNews = {
+  title: string;
+  publisher: string | null;
+  author: string | null;
+  published_at: string | null;
+  source_url: string | null;
+  summary: string | null;
+  source: string;
+  retrieved_at: string;
+};
+
 
 type ResearchHistoryItem = {
   id: string;
@@ -107,6 +118,8 @@ type ResearchResponse = {
     };
 
     evidence: Evidence[];
+
+    news: ResearchNews[];
 
     limitations: string[];
 
@@ -1171,6 +1184,58 @@ export default function Home() {
 
                 </div>
 
+
+                <div className="rounded-2xl border border-black/[0.08] bg-white p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/35">
+                      Market news
+                    </p>
+                    <span className="rounded-full bg-black/[0.04] px-2.5 py-1 text-[10px] text-black/45">
+                      {result.research.news.length} articles
+                    </span>
+                  </div>
+
+                  {result.research.news.length ? (
+                    <div className="mt-4 space-y-4">
+                      {result.research.news.map((article, index) => (
+                        <article
+                          key={`${article.source}-${article.title}-${index}`}
+                          className="border-t border-black/[0.06] pt-4 first:border-0 first:pt-0"
+                        >
+                          {article.source_url ? (
+                            <a
+                              href={article.source_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm font-medium leading-5 text-black/80 underline decoration-black/15 underline-offset-2 hover:text-black"
+                            >
+                              {article.title}
+                            </a>
+                          ) : (
+                            <p className="text-sm font-medium leading-5 text-black/80">
+                              {article.title}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-black/40">
+                            {[article.publisher, article.source, formatDate(article.published_at)]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                          {article.summary ? (
+                            <p className="mt-2 text-xs leading-5 text-black/55">
+                              {article.summary}
+                            </p>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs leading-5 text-black/50">
+                      News is currently unavailable for this research run. Market
+                      analysis is shown separately; no news articles are included.
+                    </p>
+                  )}
+                </div>
 
                 <div className="rounded-2xl border border-amber-200/70 bg-amber-50/50 p-6">
 
