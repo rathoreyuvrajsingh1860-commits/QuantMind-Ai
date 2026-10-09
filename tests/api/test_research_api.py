@@ -357,6 +357,7 @@ def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
     data = response.json()
 
     assert data["verification"] is None
+    assert data["research"]["news"] == []
 
     assert data["research"]["coverage"] == {
         "requested_start": "2025-10-03",
