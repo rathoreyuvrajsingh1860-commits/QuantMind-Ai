@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ResearchEntity(BaseModel):
@@ -41,6 +41,19 @@ class ResearchEvidence(BaseModel):
     description: str
 
 
+class ResearchNews(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    publisher: str | None = None
+    author: str | None = None
+    published_at: datetime | None = None
+    source_url: str | None = None
+    summary: str | None = None
+    source: str
+    retrieved_at: datetime
+
+
 class ResearchCoverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -60,6 +73,7 @@ class ResearchResult(BaseModel):
     evidence: list[ResearchEvidence]
     coverage: ResearchCoverage
     limitations: list[str]
+    news: list[ResearchNews] = Field(default_factory=list)
 
 
 class PersistedResearch(BaseModel):

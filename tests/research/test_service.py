@@ -6,6 +6,9 @@ from src.research.service import ResearchService
 
 
 class FakeDataService:
+    def __init__(self, *, news_error=None):
+        self.news_error = news_error
+
     def search_company(self, query):
         return [
             CompanyProfile(
@@ -24,10 +27,30 @@ class FakeDataService:
             ),
         ]
 
+    def get_news(self, symbol, start=None, end=None):
+        if self.news_error is not None:
+            raise self.news_error
+
+        from src.data.models import NewsArticle
+
+        return [
+            NewsArticle(
+                title="Reliance announces new investment",
+                publisher="Test News",
+                author="Test Author",
+                published_at=datetime(2026, 5, 15, 10, 30, tzinfo=UTC),
+                url="https://example.com/reliance",
+                summary="Reliance announced a new investment.",
+                symbol=symbol,
+                source="test-provider",
+                retrieved_at=datetime(2026, 5, 15, 11, 0, tzinfo=UTC),
+            )
+        ]
+
 
 class FakeMarketService:
-    def __init__(self):
-        self.data_service = FakeDataService()
+    def __init__(self, *, news_error=None):
+        self.data_service = FakeDataService(news_error=news_error)
         self.profile_symbols = []
         self.price_history_symbols = []
 
@@ -181,3 +204,52 @@ def test_research_service_reports_actual_evidence_coverage():
     assert result.coverage.evidence_start == date(2026, 1, 1)
     assert result.coverage.evidence_end == date(2026, 6, 1)
     assert result.coverage.observations == result.market.observations
+
+
+def test_research_service_includes_news():
+    service = ResearchService(FakeMarketService())
+
+    result = service.research(
+        "RELIANCE:BSE",
+        start=date(2026, 1, 1),
+        end=date(2026, 6, 1),
+    )
+
+    assert len(result.news) == 1
+
+    article = result.news[0]
+
+    assert article.title == "Reliance announces new investment"
+    assert article.publisher == "Test News"
+    assert article.author == "Test Author"
+    assert article.source_url == "https://example.com/reliance"
+    assert article.source == "test-provider"
+    assert article.published_at == datetime(
+        2026,
+        5,
+        15,
+        10,
+        30,
+        tzinfo=UTC,
+    )
+
+
+def test_research_service_continues_when_news_fails():
+    service = ResearchService(
+        FakeMarketService(
+            news_error=RuntimeError("news unavailable"),
+        )
+    )
+
+    result = service.research(
+        "RELIANCE:BSE",
+        start=date(2026, 1, 1),
+        end=date(2026, 6, 1),
+    )
+
+    assert result.market.observations == 2
+    assert result.news == []
+    assert (
+        "News data was unavailable for the requested research period."
+        in result.limitations
+    )

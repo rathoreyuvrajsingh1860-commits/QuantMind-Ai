@@ -256,6 +256,9 @@ class ResearchRepository:
                     "entity": research.entity.model_dump(mode="json"),
                     "market": research.market.model_dump(mode="json"),
                     "coverage": research.coverage.model_dump(mode="json"),
+                    "news": [
+                        article.model_dump(mode="json") for article in research.news
+                    ],
                     "limitations": research.limitations,
                     "verification": (
                         verification.model_dump(mode="json")

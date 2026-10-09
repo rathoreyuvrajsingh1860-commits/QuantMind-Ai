@@ -9,6 +9,7 @@ from src.research.models import (
     ResearchCoverage,
     ResearchEntity,
     ResearchEvidence,
+    ResearchNews,
     ResearchResult,
 )
 from src.research.repositories.research import ResearchRepository
@@ -55,6 +56,18 @@ def make_research() -> ResearchResult:
             observations=1,
         ),
         limitations=[],
+        news=[
+            ResearchNews(
+                title="Reliance announces quarterly results",
+                publisher="Example Financial News",
+                author="Editorial Desk",
+                published_at=datetime(2026, 8, 31, tzinfo=UTC),
+                source_url="https://example.com/reliance-results",
+                summary="Quarterly results were announced.",
+                source="alpha_vantage",
+                retrieved_at=datetime(2026, 9, 1, tzinfo=UTC),
+            )
+        ],
     )
 
 
@@ -116,6 +129,18 @@ def test_repository_persists_research_run():
     assert metadata.obj["coverage"]["requested_start"] == "2026-01-01"
     assert metadata.obj["coverage"]["requested_end"] == "2026-09-01"
     assert metadata.obj["verification"] is None
+    assert metadata.obj["news"] == [
+        {
+            "title": "Reliance announces quarterly results",
+            "publisher": "Example Financial News",
+            "author": "Editorial Desk",
+            "published_at": "2026-08-31T00:00:00Z",
+            "source_url": "https://example.com/reliance-results",
+            "summary": "Quarterly results were announced.",
+            "source": "alpha_vantage",
+            "retrieved_at": "2026-09-01T00:00:00Z",
+        }
+    ]
 
 
 def test_repository_creates_evidence_for_prices():

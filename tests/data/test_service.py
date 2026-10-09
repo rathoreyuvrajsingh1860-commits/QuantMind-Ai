@@ -424,3 +424,55 @@ def test_data_service_falls_back_on_unsupported_data():
     )
 
     assert service.get_company_profile("RELIANCE:BSE") == "fallback-result"
+
+
+def test_data_service_delegates_news_to_provider():
+    class FakeProvider:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.NEWS,
+            }
+
+        def get_news(self, symbol, start=None, end=None):
+            return [symbol, start, end]
+
+        def close(self):
+            pass
+
+    service = DataService(FakeProvider())
+
+    assert service.get_news(
+        "RELIANCE:BSE",
+        "start",
+        "end",
+    ) == [
+        "RELIANCE:BSE",
+        "start",
+        "end",
+    ]
+
+
+def test_data_service_does_not_use_provider_without_news_capability():
+    class ProviderWithoutNews:
+        @property
+        def capabilities(self):
+            return {
+                DataCapability.PRICE_HISTORY,
+            }
+
+        def get_news(self, symbol, start=None, end=None):
+            raise AssertionError(
+                "Provider without NEWS capability should not be called"
+            )
+
+        def close(self):
+            pass
+
+    service = DataService(ProviderWithoutNews())
+
+    with pytest.raises(
+        RuntimeError,
+        match="No configured provider supports news",
+    ):
+        service.get_news("RELIANCE:BSE")

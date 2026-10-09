@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 
-from src.data.models import CompanyProfile, PriceBar
+from src.data.models import CompanyProfile, NewsArticle, PriceBar
 
 
 class DataCapability(StrEnum):
@@ -11,6 +11,7 @@ class DataCapability(StrEnum):
     COMPANY_SEARCH = "company_search"
     COMPANY_PROFILE = "company_profile"
     PRICE_HISTORY = "price_history"
+    NEWS = "news"
 
 
 class FinancialDataProvider(ABC):
@@ -37,4 +38,13 @@ class FinancialDataProvider(ABC):
         start: date,
         end: date,
     ) -> list[PriceBar]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_news(
+        self,
+        symbol: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[NewsArticle]:
         raise NotImplementedError

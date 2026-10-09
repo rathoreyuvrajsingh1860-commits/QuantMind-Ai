@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from src.data.market_service import MarketService
 from src.data.models import PriceBar
@@ -8,6 +8,7 @@ from src.research.models import (
     ResearchCoverage,
     ResearchEntity,
     ResearchEvidence,
+    ResearchNews,
     ResearchResult,
 )
 
@@ -17,6 +18,7 @@ class ResearchService:
 
     def __init__(self, market_service: MarketService):
         self.market_service = market_service
+        self.data_service = market_service.data_service
         self.last_prices: list[PriceBar] = []
 
     def _default_date_range(self) -> tuple[date, date]:
@@ -55,6 +57,7 @@ class ResearchService:
             raise ValueError(f"Ambiguous company query: {symbol}. {detail}")
 
         company = exact_matches[0]
+
         if company.exchange:
             return f"{company.symbol}:{company.exchange.upper()}"
 
@@ -113,6 +116,7 @@ class ResearchService:
         period_low = metrics["period_low"]
         average_close = metrics["average_close"]
         total_volume = metrics["total_volume"]
+
         market = MarketResearch(
             start=start,
             end=end,
@@ -154,9 +158,36 @@ class ResearchService:
                 "No market observations were available for the requested period."
             )
 
+        news: list[ResearchNews] = []
+
+        try:
+            news_articles = self.data_service.get_news(
+                resolved_symbol,
+                datetime.combine(start, datetime.min.time(), tzinfo=UTC),
+                datetime.combine(end, datetime.max.time(), tzinfo=UTC),
+            )
+
+            news = [
+                ResearchNews(
+                    title=article.title,
+                    publisher=article.publisher,
+                    author=article.author,
+                    published_at=article.published_at,
+                    source_url=article.url,
+                    summary=article.summary,
+                    source=article.source,
+                    retrieved_at=article.retrieved_at,
+                )
+                for article in news_articles
+            ]
+        except Exception:
+            limitations.append(
+                "News data was unavailable for the requested research period."
+            )
+
         limitations.append(
             "This research result contains market-data analysis "
-            "only; it is not investment advice."
+            "and available news context; it is not investment advice."
         )
 
         return ResearchResult(
@@ -171,6 +202,7 @@ class ResearchService:
                 currency=profile.currency,
             ),
             market=market,
+            news=news,
             evidence=evidence,
             coverage=coverage,
             limitations=limitations,

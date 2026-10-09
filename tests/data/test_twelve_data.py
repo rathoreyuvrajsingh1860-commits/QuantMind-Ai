@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.data.providers.twelve_data import TwelveDataProvider
 
 
@@ -125,3 +127,49 @@ def test_twelve_data_authentication_error_raises_provider_authentication_error()
             raise AssertionError("Expected ProviderAuthenticationError")
         except ProviderAuthenticationError:
             pass
+
+
+def test_twelve_data_news_is_unsupported():
+    provider = object.__new__(TwelveDataProvider)
+
+    from src.data.errors import UnsupportedDataError
+
+    with pytest.raises(
+        UnsupportedDataError,
+        match="does not support market news",
+    ):
+        provider.get_news("RELIANCE:NSE")
+
+
+def test_twelve_data_prefers_provider_specific_api_key():
+    with (
+        patch(
+            "src.data.providers.twelve_data.settings.twelve_data_api_key", "twelve-key"
+        ),
+        patch(
+            "src.data.providers.twelve_data.settings.financial_data_api_key",
+            "generic-key",
+        ),
+        patch("src.data.providers.twelve_data.httpx.Client") as mock_client,
+    ):
+        provider = TwelveDataProvider()
+
+    assert provider.api_key == "twelve-key"
+    assert mock_client.call_args.kwargs["params"] == {"apikey": "twelve-key"}
+    provider.close()
+
+
+def test_twelve_data_falls_back_to_generic_api_key():
+    with (
+        patch("src.data.providers.twelve_data.settings.twelve_data_api_key", ""),
+        patch(
+            "src.data.providers.twelve_data.settings.financial_data_api_key",
+            "generic-key",
+        ),
+        patch("src.data.providers.twelve_data.httpx.Client") as mock_client,
+    ):
+        provider = TwelveDataProvider()
+
+    assert provider.api_key == "generic-key"
+    assert mock_client.call_args.kwargs["params"] == {"apikey": "generic-key"}
+    provider.close()

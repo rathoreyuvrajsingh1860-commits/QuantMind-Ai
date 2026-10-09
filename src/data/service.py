@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from src.config.settings import settings
 from src.data.base import (
@@ -6,7 +6,7 @@ from src.data.base import (
     FinancialDataProvider,
 )
 from src.data.errors import is_fallback_eligible
-from src.data.models import CompanyProfile, PriceBar
+from src.data.models import CompanyProfile, NewsArticle, PriceBar
 from src.data.providers.alpha_vantage import AlphaVantageProvider
 from src.data.providers.twelve_data import TwelveDataProvider
 
@@ -202,6 +202,22 @@ class DataService:
                 end,
             ),
             "price_history",
+        )
+
+    def get_news(
+        self,
+        symbol: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[NewsArticle]:
+        return self._execute_with_fallback(
+            DataCapability.NEWS,
+            lambda provider: provider.get_news(
+                symbol,
+                start,
+                end,
+            ),
+            "get_news",
         )
 
     def close(self) -> None:

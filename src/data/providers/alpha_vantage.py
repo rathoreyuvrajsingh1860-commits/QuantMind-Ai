@@ -16,7 +16,7 @@ from src.data.errors import (
     RateLimitError,
     UnsupportedDataError,
 )
-from src.data.models import CompanyProfile, PriceBar
+from src.data.models import CompanyProfile, NewsArticle, PriceBar
 from src.data.retry import retry_with_backoff
 
 
@@ -31,11 +31,14 @@ class AlphaVantageProvider(FinancialDataProvider):
             DataCapability.COMPANY_SEARCH,
             DataCapability.COMPANY_PROFILE,
             DataCapability.PRICE_HISTORY,
+            DataCapability.NEWS,
         }
 
     def __init__(self) -> None:
-        if not settings.financial_data_api_key:
-            raise ValueError("FINANCIAL_DATA_API_KEY is not configured")
+        api_key = settings.alpha_vantage_api_key or settings.financial_data_api_key
+        if not api_key:
+            raise ValueError("Alpha Vantage API key is not configured")
+        self.api_key = api_key
 
         self.client = httpx.Client(
             base_url=self.BASE_URL,
@@ -51,7 +54,7 @@ class AlphaVantageProvider(FinancialDataProvider):
                 "",
                 params={
                     **params,
-                    "apikey": settings.financial_data_api_key,
+                    "apikey": self.api_key,
                 },
             )
         except httpx.TimeoutException as exc:
@@ -75,7 +78,17 @@ class AlphaVantageProvider(FinancialDataProvider):
                 f"Alpha Vantage request failed: HTTP {response.status_code}"
             )
 
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise ProviderServerError(
+                "Alpha Vantage returned an invalid JSON response"
+            ) from exc
+
+        if not isinstance(payload, dict) or not payload:
+            raise ProviderServerError(
+                "Alpha Vantage returned an empty or invalid response"
+            )
 
         if "Error Message" in payload:
             raise UnsupportedDataError(payload["Error Message"])
@@ -220,7 +233,7 @@ class AlphaVantageProvider(FinancialDataProvider):
         time_series = payload.get("Time Series (Daily)", {})
 
         if not time_series:
-            raise RuntimeError(f"No daily price data returned for {symbol}")
+            raise ProviderServerError(f"No daily price data returned for {symbol}")
 
         retrieved_at = datetime.now(UTC)
 
@@ -254,3 +267,70 @@ class AlphaVantageProvider(FinancialDataProvider):
         prices.sort(key=lambda item: item.date)
 
         return prices
+
+    @staticmethod
+    def _parse_news_timestamp(value: str | None) -> datetime | None:
+        """Parse a provider timestamp without discarding an otherwise valid article."""
+
+        if not value:
+            return None
+
+        try:
+            return datetime.strptime(value, "%Y%m%dT%H%M%S").replace(tzinfo=UTC)
+        except (TypeError, ValueError):
+            return None
+
+    def get_news(
+        self,
+        symbol: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[NewsArticle]:
+        """Return normalized market news for a company."""
+
+        normalized_symbol = self._normalize_symbol(symbol)
+
+        params = {
+            "function": "NEWS_SENTIMENT",
+            "tickers": normalized_symbol,
+            "sort": "LATEST",
+            "limit": "1000",
+        }
+
+        if start is not None:
+            params["time_from"] = start.strftime("%Y%m%dT%H%M")
+
+        if end is not None:
+            params["time_to"] = end.strftime("%Y%m%dT%H%M")
+
+        payload = self._request(params)
+
+        retrieved_at = datetime.now(UTC)
+
+        articles: list[NewsArticle] = []
+
+        for item in payload.get("feed", []):
+            published_at = item.get("time_published")
+
+            articles.append(
+                NewsArticle(
+                    title=item.get("title", ""),
+                    publisher=item.get("source"),
+                    author=item.get("authors", [None])[0]
+                    if item.get("authors")
+                    else None,
+                    published_at=self._parse_news_timestamp(published_at),
+                    url=item.get("url"),
+                    summary=item.get("summary"),
+                    symbol=normalized_symbol,
+                    source="alpha_vantage",
+                    retrieved_at=retrieved_at,
+                )
+            )
+
+        articles.sort(
+            key=lambda item: item.published_at or datetime.min.replace(tzinfo=UTC),
+            reverse=True,
+        )
+
+        return articles

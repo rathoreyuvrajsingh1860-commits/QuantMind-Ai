@@ -173,6 +173,7 @@ def get_research(research_run_id: str) -> ResearchResponse:
         "coverage": coverage,
         "evidence": evidence,
         "limitations": limitations,
+        "news": metadata.get("news", []),
     }
 
     research = ResearchResult.model_validate(research_payload)

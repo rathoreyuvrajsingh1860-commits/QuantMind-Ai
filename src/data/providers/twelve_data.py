@@ -15,7 +15,7 @@ from src.data.errors import (
     RateLimitError,
     UnsupportedDataError,
 )
-from src.data.models import CompanyProfile, PriceBar
+from src.data.models import CompanyProfile, NewsArticle, PriceBar
 from src.data.retry import retry_with_backoff
 
 
@@ -33,13 +33,15 @@ class TwelveDataProvider(FinancialDataProvider):
         }
 
     def __init__(self) -> None:
-        if not settings.financial_data_api_key:
-            raise ValueError("FINANCIAL_DATA_API_KEY is not configured")
+        api_key = settings.twelve_data_api_key or settings.financial_data_api_key
+        if not api_key:
+            raise ValueError("Twelve Data API key is not configured")
+        self.api_key = api_key
 
         self.client = httpx.Client(
             base_url=self.BASE_URL,
             timeout=20.0,
-            params={"apikey": settings.financial_data_api_key},
+            params={"apikey": self.api_key},
         )
 
     def close(self) -> None:
@@ -189,3 +191,11 @@ class TwelveDataProvider(FinancialDataProvider):
             )
             for item in payload.get("values", [])
         ]
+
+    def get_news(
+        self,
+        symbol: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[NewsArticle]:
+        raise UnsupportedDataError("Twelve Data does not support market news")

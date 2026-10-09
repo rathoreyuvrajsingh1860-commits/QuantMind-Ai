@@ -30,3 +30,17 @@ class PriceBar(BaseModel):
     source: str
     source_url: str | None = None
     retrieved_at: datetime
+
+
+class NewsArticle(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    publisher: str | None = None
+    author: str | None = None
+    published_at: datetime | None = None
+    url: str | None = None
+    summary: str | None = None
+    symbol: str | None = None
+    source: str
+    retrieved_at: datetime
