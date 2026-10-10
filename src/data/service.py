@@ -9,6 +9,7 @@ from src.data.errors import is_fallback_eligible
 from src.data.models import CompanyProfile, NewsArticle, PriceBar
 from src.data.providers.alpha_vantage import AlphaVantageProvider
 from src.data.providers.twelve_data import TwelveDataProvider
+from src.data.providers.yahoo_finance import YahooFinanceProvider
 
 PROVIDER_REGISTRY: dict[
     str,
@@ -16,6 +17,7 @@ PROVIDER_REGISTRY: dict[
 ] = {
     "alpha_vantage": AlphaVantageProvider,
     "twelve_data": TwelveDataProvider,
+    "yahoo_finance": YahooFinanceProvider,
 }
 
 

@@ -16,6 +16,7 @@ dependencies = [
     "alembic>=1.15,<2.0",
     "sqlalchemy>=2.0,<3.0",
     "httpx>=0.28,<1.0",
+    "yfinance>=0.2.54,<1.0",
 ]
 
 [tool.setuptools]

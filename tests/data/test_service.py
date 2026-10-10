@@ -40,6 +40,9 @@ def test_create_alpha_vantage_provider():
     assert result == "alpha-provider"
 
 
+@__import__("unittest").mock.patch(
+    "src.data.service.settings.financial_data_provider_fallbacks", ""
+)
 def test_create_twelve_data_provider():
     def mock_provider():
         return "twelve-provider"
