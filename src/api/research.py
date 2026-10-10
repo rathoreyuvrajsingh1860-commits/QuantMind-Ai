@@ -267,6 +267,28 @@ def research(request: ResearchRequest) -> ResearchResponse:
             detail=str(exc),
         ) from exc
 
+    except RuntimeError as exc:
+        if str(exc).startswith("All providers failed for "):
+            if research_run_id is not None:
+                with suppress(Exception):
+                    repository.update_research_run_status(
+                        research_run_id,
+                        status="failed",
+                        metadata={"error": str(exc)},
+                    )
+            raise HTTPException(
+                status_code=502,
+                detail="Market data provider unavailable",
+            ) from exc
+        if research_run_id is not None:
+            with suppress(Exception):
+                repository.update_research_run_status(
+                    research_run_id,
+                    status="failed",
+                    metadata={"error": str(exc)},
+                )
+        raise
+
     except Exception as exc:
         if research_run_id is not None:
             with suppress(Exception):

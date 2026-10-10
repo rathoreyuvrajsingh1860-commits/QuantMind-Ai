@@ -248,7 +248,12 @@ export default function Home() {
       const response = await fetch(`${API_URL}/${id}`);
 
       if (!response.ok) {
-        throw new Error(`Unable to load research run (${response.status})`);
+        const body = await response.json().catch(() => null);
+        throw new Error(
+          typeof body?.detail === "string"
+            ? body.detail
+            : `Unable to load research run (${response.status})`,
+        );
       }
 
       const data: ResearchResponse = await response.json();
@@ -307,9 +312,12 @@ export default function Home() {
 
 
       if (!response.ok) {
-
-        throw new Error(`Research request failed (${response.status})`);
-
+        const body = await response.json().catch(() => null);
+        throw new Error(
+          typeof body?.detail === "string"
+            ? body.detail
+            : `Research request failed (${response.status})`,
+        );
       }
 
 

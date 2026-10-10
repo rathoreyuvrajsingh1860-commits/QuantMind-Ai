@@ -371,3 +371,38 @@ def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
         "Historical run predates coverage tracking"
         in data["research"]["limitations"][-1]
     )
+
+
+def test_research_api_returns_502_when_all_data_providers_fail() -> None:
+    research_run_id = uuid4()
+    research_service = MagicMock()
+    research_service.research.side_effect = RuntimeError(
+        "All providers failed for price_history"
+    )
+    repository = MagicMock()
+    repository.create_research_run.return_value = research_run_id
+
+    with (
+        patch(
+            "src.api.research.create_research_service",
+            return_value=research_service,
+        ),
+        patch(
+            "src.api.research.ResearchRepository",
+            return_value=repository,
+        ),
+    ):
+        response = client.post(
+            "/api/research",
+            json={"query": "RELIANCE:BSE"},
+        )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Market data provider unavailable"
+    repository.update_research_run_status.assert_called_once_with(
+        research_run_id,
+        status="failed",
+        metadata={"error": "All providers failed for price_history"},
+    )
+    repository.save_research.assert_not_called()
+    research_service.close.assert_called_once()
