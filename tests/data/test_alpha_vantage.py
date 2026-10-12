@@ -293,3 +293,18 @@ def test_alpha_vantage_get_news_handles_malformed_timestamp():
     assert len(result) == 1
     assert result[0].title == "Market update"
     assert result[0].published_at is None
+
+
+def test_explicit_company_profile_preserves_canonical_symbol():
+    provider = AlphaVantageProvider()
+
+    try:
+        nse = provider.get_company_profile("RELIANCE:NSE")
+        bse = provider.get_company_profile("RELIANCE:BSE")
+
+        assert nse.symbol == "RELIANCE:NSE"
+        assert nse.exchange == "NSE"
+        assert bse.symbol == "RELIANCE:BSE"
+        assert bse.exchange == "BSE"
+    finally:
+        provider.close()

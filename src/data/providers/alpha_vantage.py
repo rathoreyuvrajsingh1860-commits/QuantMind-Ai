@@ -177,11 +177,9 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         normalized_symbol = self._normalize_symbol(symbol)
 
-        # For an explicitly qualified symbol such as RELIANCE:BSE,
-        # we already know the provider symbol and exchange.
         if ":" in symbol:
             ticker, exchange = symbol.rsplit(":", 1)
-
+            ticker = ticker.strip()
             exchange = exchange.strip().upper()
 
             exchange_names = {
@@ -191,15 +189,17 @@ class AlphaVantageProvider(FinancialDataProvider):
                 "NYSE": "NYSE",
             }
 
+            if exchange not in exchange_names:
+                raise ValueError(f"Unsupported Alpha Vantage exchange: {exchange}")
+
             return CompanyProfile(
-                symbol=normalized_symbol,
-                name=ticker.strip(),
-                exchange=exchange_names.get(exchange, exchange),
-                country=("India" if exchange in {"BSE", "NSE"} else "United States"),
-                currency=("INR" if exchange in {"BSE", "NSE"} else "USD"),
+                symbol=f"{ticker}:{exchange}",
+                name=ticker,
+                exchange=exchange_names[exchange],
+                country="India" if exchange in {"BSE", "NSE"} else "United States",
+                currency="INR" if exchange in {"BSE", "NSE"} else "USD",
             )
 
-        # For an unqualified symbol, use Alpha Vantage search.
         results = self.search_company(normalized_symbol)
 
         for company in results:
@@ -268,18 +268,6 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         return prices
 
-    @staticmethod
-    def _parse_news_timestamp(value: str | None) -> datetime | None:
-        """Parse a provider timestamp without discarding an otherwise valid article."""
-
-        if not value:
-            return None
-
-        try:
-            return datetime.strptime(value, "%Y%m%dT%H%M%S").replace(tzinfo=UTC)
-        except (TypeError, ValueError):
-            return None
-
     def get_news(
         self,
         symbol: str,
@@ -310,7 +298,15 @@ class AlphaVantageProvider(FinancialDataProvider):
         articles: list[NewsArticle] = []
 
         for item in payload.get("feed", []):
-            published_at = item.get("time_published")
+            published_at = None
+            if item.get("time_published"):
+                try:
+                    published_at = datetime.strptime(
+                        item["time_published"],
+                        "%Y%m%dT%H%M%S",
+                    ).replace(tzinfo=UTC)
+                except ValueError:
+                    published_at = None
 
             articles.append(
                 NewsArticle(
@@ -319,7 +315,7 @@ class AlphaVantageProvider(FinancialDataProvider):
                     author=item.get("authors", [None])[0]
                     if item.get("authors")
                     else None,
-                    published_at=self._parse_news_timestamp(published_at),
+                    published_at=published_at,
                     url=item.get("url"),
                     summary=item.get("summary"),
                     symbol=normalized_symbol,
