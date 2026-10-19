@@ -79,6 +79,14 @@ class ProviderConfigurationError(ProviderError):
 def is_fallback_eligible(error: Exception) -> bool:
     """Return whether another provider should be attempted."""
 
+    if isinstance(error, ProviderInvalidRequestError):
+        message = str(error).lower()
+        return (
+            "outputsize=full" in message
+            and "premium feature" in message
+            and "time_series_daily" in message
+        )
+
     return isinstance(
         error,
         (

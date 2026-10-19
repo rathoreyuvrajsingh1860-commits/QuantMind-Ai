@@ -87,7 +87,7 @@ def test_verification_detects_incorrect_observation_count() -> None:
     assert any(issue.field == "observations" for issue in result.issues)
 
 
-def test_verification_handles_empty_prices() -> None:
+def test_verification_fails_for_empty_prices() -> None:
     market = MarketResearch(
         start=date(2026, 9, 1),
         end=date(2026, 9, 2),
@@ -99,5 +99,18 @@ def test_verification_handles_empty_prices() -> None:
         prices=[],
     )
 
-    assert result.passed is True
-    assert result.issues == []
+    assert result.passed is False
+    assert any(issue.field == "observations" for issue in result.issues)
+
+
+def test_verification_fails_for_prices_outside_requested_period() -> None:
+    prices = make_prices()
+    prices[0].date = date(2026, 8, 31)
+
+    result = VerificationService().verify_market_research(
+        market=make_valid_market(),
+        prices=prices,
+    )
+
+    assert result.passed is False
+    assert any(issue.field == "date_range" for issue in result.issues)

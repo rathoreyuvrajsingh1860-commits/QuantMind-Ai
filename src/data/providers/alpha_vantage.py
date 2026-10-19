@@ -266,6 +266,19 @@ class AlphaVantageProvider(FinancialDataProvider):
 
         prices.sort(key=lambda item: item.date)
 
+        if not prices:
+            raise UnsupportedDataError(
+                f"Alpha Vantage has no price history for {symbol} "
+                f"between {start} and {end}"
+            )
+
+        if (prices[0].date - start).days > 7:
+            raise UnsupportedDataError(
+                f"Alpha Vantage compact history does not cover the requested "
+                f"start date for {symbol}: requested {start}, "
+                f"earliest available {prices[0].date}"
+            )
+
         return prices
 
     def get_news(

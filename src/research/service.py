@@ -1,3 +1,4 @@
+
 from datetime import UTC, date, datetime, timedelta
 
 from src.data.market_service import MarketService
@@ -5,6 +6,7 @@ from src.data.models import PriceBar
 from src.quant.calculations import calculate_market_metrics
 from src.research.models import (
     MarketResearch,
+    PriceHistoryPoint,
     ResearchCoverage,
     ResearchEntity,
     ResearchEvidence,
@@ -108,28 +110,28 @@ class ResearchService:
 
         metrics = calculate_market_metrics(prices)
 
-        first_close = metrics["first_close"]
-        latest_close = metrics["latest_close"]
-        absolute_change = metrics["absolute_change"]
-        percentage_change = metrics["percentage_change"]
-        period_high = metrics["period_high"]
-        period_low = metrics["period_low"]
-        average_close = metrics["average_close"]
-        total_volume = metrics["total_volume"]
-
         market = MarketResearch(
             start=start,
             end=end,
             observations=len(prices),
-            latest_close=latest_close,
-            first_close=first_close,
-            absolute_change=absolute_change,
-            percentage_change=percentage_change,
-            period_high=period_high,
-            period_low=period_low,
-            average_close=average_close,
-            total_volume=total_volume,
+            latest_close=metrics["latest_close"],
+            first_close=metrics["first_close"],
+            absolute_change=metrics["absolute_change"],
+            percentage_change=metrics["percentage_change"],
+            period_high=metrics["period_high"],
+            period_low=metrics["period_low"],
+            average_close=metrics["average_close"],
+            total_volume=metrics["total_volume"],
         )
+
+        price_history = [
+            PriceHistoryPoint(
+                date=bar.date,
+                close=bar.close,
+                source=bar.source,
+            )
+            for bar in prices
+        ]
 
         evidence = [
             ResearchEvidence(
@@ -202,6 +204,7 @@ class ResearchService:
                 currency=profile.currency,
             ),
             market=market,
+            price_history=price_history,
             news=news,
             evidence=evidence,
             coverage=coverage,

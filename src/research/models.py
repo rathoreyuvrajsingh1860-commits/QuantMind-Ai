@@ -15,6 +15,12 @@ class ResearchEntity(BaseModel):
     industry: str | None = None
     currency: str | None = None
 
+class PriceHistoryPoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    date: date
+    close: Decimal
+    source: str
 
 class MarketResearch(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -74,8 +80,7 @@ class ResearchResult(BaseModel):
     coverage: ResearchCoverage
     limitations: list[str]
     news: list[ResearchNews] = Field(default_factory=list)
-
-
+    price_history: list[PriceHistoryPoint] = Field(default_factory=list)
 class PersistedResearch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

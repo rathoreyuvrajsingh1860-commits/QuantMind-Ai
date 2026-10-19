@@ -5,6 +5,7 @@ import pytest
 from src.data.base import DataCapability
 from src.data.errors import (
     ProviderAuthenticationError,
+    ProviderInvalidRequestError,
     ProviderServerError,
     RateLimitError,
     TemporaryProviderError,
@@ -479,3 +480,22 @@ def test_data_service_does_not_use_provider_without_news_capability():
         match="No configured provider supports news",
     ):
         service.get_news("RELIANCE:BSE")
+
+
+def test_premium_history_limitation_is_fallback_eligible():
+    from src.data.errors import is_fallback_eligible
+
+    error = ProviderInvalidRequestError(
+        "The outputsize=full parameter value is a premium feature "
+        "for the TIME_SERIES_DAILY endpoint."
+    )
+
+    assert is_fallback_eligible(error)
+
+
+def test_ordinary_invalid_request_is_not_fallback_eligible():
+    from src.data.errors import is_fallback_eligible
+
+    error = ProviderInvalidRequestError("Invalid symbol")
+
+    assert not is_fallback_eligible(error)

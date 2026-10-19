@@ -89,3 +89,30 @@ def test_request_failure_is_fallback_eligible(monkeypatch):
         YahooFinanceProvider().get_price_history(
             "RELIANCE:NSE", date(2026, 10, 8), date(2026, 10, 8)
         )
+
+
+def test_price_history_skips_rows_with_nan_close(monkeypatch):
+    frame = pd.DataFrame(
+        {
+            "Open": [100.0, 101.0],
+            "High": [110.0, 111.0],
+            "Low": [95.0, 96.0],
+            "Close": [float("nan"), 105.0],
+            "Adj Close": [float("nan"), 104.0],
+            "Volume": [1234, 5678],
+        },
+        index=pd.to_datetime(["2026-10-07", "2026-10-08"]),
+    )
+    ticker = Mock()
+    ticker.history.return_value = frame
+    monkeypatch.setattr(
+        "src.data.providers.yahoo_finance.yf.Ticker", Mock(return_value=ticker)
+    )
+
+    bars = YahooFinanceProvider().get_price_history(
+        "RELIANCE:NSE", date(2026, 10, 7), date(2026, 10, 8)
+    )
+
+    assert len(bars) == 1
+    assert bars[0].date == date(2026, 10, 8)
+    assert bars[0].close == 105

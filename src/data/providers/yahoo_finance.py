@@ -1,6 +1,8 @@
+import math
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
+import pandas as pd
 import yfinance as yf
 
 from src.data.base import DataCapability, FinancialDataProvider
@@ -76,9 +78,17 @@ class YahooFinanceProvider(FinancialDataProvider):
 
         retrieved_at = datetime.now(UTC)
         bars: list[PriceBar] = []
+
         for timestamp, row in frame.iterrows():
             price_date = timestamp.date()
             if not start <= price_date <= end:
+                continue
+
+            required_fields = ("Open", "High", "Low", "Close", "Volume")
+            if any(
+                pd.isna(row[field]) or not math.isfinite(float(row[field]))
+                for field in required_fields
+            ):
                 continue
 
             def decimal_value(key: str, *, _row=row) -> Decimal:
@@ -106,6 +116,12 @@ class YahooFinanceProvider(FinancialDataProvider):
             )
 
         bars.sort(key=lambda bar: bar.date)
+        if bars and (bars[0].date - start).days > 7:
+            raise UnsupportedDataError(
+                "Yahoo Finance history does not cover the requested start date: "
+                f"requested {start}, earliest available {bars[0].date}"
+            )
+
         if not bars:
             raise UnsupportedDataError(
                 f"Yahoo Finance returned no prices in the requested date range for {symbol}"

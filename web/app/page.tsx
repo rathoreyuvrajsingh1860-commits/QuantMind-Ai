@@ -1,8 +1,6 @@
 "use client";
 
-
 import { FormEvent, useEffect, useMemo, useState } from "react";
-
 
 type Evidence = {
 
@@ -27,7 +25,6 @@ type ResearchNews = {
   retrieved_at: string;
 };
 
-
 type ResearchHistoryItem = {
   id: string;
   query: string;
@@ -35,6 +32,12 @@ type ResearchHistoryItem = {
   model: string | null;
   started_at: string;
   completed_at: string | null;
+};
+
+type PriceHistoryPoint = {
+  date: string;
+  close: string | number;
+  source: string;
 };
 
 type ResearchResponse = {
@@ -103,6 +106,8 @@ type ResearchResponse = {
 
     };
 
+    price_history?: PriceHistoryPoint[];
+
     coverage: {
 
       requested_start: string;
@@ -153,17 +158,13 @@ type ResearchResponse = {
 
 };
 
-
 const API_URL = "http\://localhost:8000/api/research";
-
 
 function formatNumber(value: string | number | null) {
 
   if (value === null) return "—";
 
-
   const number = Number(value);
-
 
   return new Intl.NumberFormat("en-IN", {
 
@@ -173,7 +174,6 @@ function formatNumber(value: string | number | null) {
 
 }
 
-
 function formatPercent(value: string | null) {
 
   if (value === null) return "—";
@@ -182,11 +182,9 @@ function formatPercent(value: string | null) {
 
 }
 
-
 function formatDate(value: string | null) {
 
   if (!value) return "—";
-
 
   return new Date(value).toLocaleDateString("en-IN", {
 
@@ -199,7 +197,6 @@ function formatDate(value: string | null) {
   });
 
 }
-
 
 export default function Home() {
 
@@ -214,7 +211,6 @@ export default function Home() {
   const [history, setHistory] = useState<ResearchHistoryItem[]>([]);
 
   const [historyLoading, setHistoryLoading] = useState(true);
-
 
   async function loadHistory() {
     try {
@@ -278,17 +274,13 @@ export default function Home() {
 
     event?.preventDefault();
 
-
     const trimmed = query.trim();
 
-
     if (!trimmed) return;
-
 
     setLoading(true);
 
     setError("");
-
 
     try {
 
@@ -310,7 +302,6 @@ export default function Home() {
 
       });
 
-
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         throw new Error(
@@ -319,7 +310,6 @@ export default function Home() {
             : `Research request failed (${response.status})`,
         );
       }
-
 
       const data: ResearchResponse = await response.json();
 
@@ -346,49 +336,61 @@ export default function Home() {
 
   }
 
-
   const market = result?.research.market;
 
   const entity = result?.research.entity;
 
   const ai = result?.ai_analysis?.analysis;
 
+  const chart = useMemo(() => {
+    const priceHistory = result?.research.price_history ?? [];
+    const prices = priceHistory
+      .filter(
+        (point) =>
+          Number.isFinite(Number(point.close)) &&
+          Number(point.close) > 0 &&
+          /^\d{4}-\d{2}-\d{2}$/.test(point.date),
+      )
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-  const range = useMemo(() => {
+    if (prices.length === 0) return null;
 
-    if (!market?.period_high || !market?.period_low) return null;
+    const values = prices.map((point) => Number(point.close));
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    const spread = high - low || high * 0.01 || 1;
+    const width = 720;
+    const height = 240;
+    const paddingX = 16;
+    const paddingY = 24;
 
-
-    const high = Number(market.period_high);
-
-    const low = Number(market.period_low);
-
-    const latest = Number(market.latest_close);
-
-
-    if (high === low) return null;
-
+    const points = prices.map((point, index) => ({
+      ...point,
+      value: Number(point.close),
+      x:
+        prices.length === 1
+          ? width / 2
+          : paddingX +
+            (index / (prices.length - 1)) * (width - paddingX * 2),
+      y:
+        height -
+        paddingY -
+        ((Number(point.close) - low) / spread) *
+          (height - paddingY * 2),
+    }));
 
     return {
-
-      high,
-
+      points,
       low,
-
-      latest,
-
-      position: Math.max(
-
-        0,
-
-        Math.min(100, ((latest - low) / (high - low)) * 100),
-
-      ),
-
+      high,
+      firstDate: prices[0].date,
+      lastDate: prices[prices.length - 1].date,
+      line: points.map((point) => `${point.x},${point.y}`).join(" "),
+      width,
+      height,
     };
-
-  }, [market]);
-
+  }, [result?.research.price_history]);
 
   return (
 
@@ -414,13 +416,11 @@ export default function Home() {
 
           </div>
 
-
           <div className="hidden text-xs text-black/45 sm:block">
 
             Financial Intelligence
 
           </div>
-
 
           <div className="flex items-center gap-2 text-xs text-black/45">
 
@@ -434,7 +434,6 @@ export default function Home() {
 
       </header>
 
-
       <div className="mx-auto max-w-[1440px] px-6 py-10 lg:px-10 lg:py-14">
 
         <section className="mx-auto max-w-4xl">
@@ -447,7 +446,6 @@ export default function Home() {
 
             </p>
 
-
             <h1 className="text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
 
               Intelligence for every
@@ -457,7 +455,6 @@ export default function Home() {
               financial decision.
 
             </h1>
-
 
             <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-black/50 sm:text-base">
 
@@ -469,7 +466,6 @@ export default function Home() {
 
           </div>
 
-
           <form onSubmit={runResearch} className="mt-8">
 
             <div className="flex items-center rounded-2xl border border-black/10 bg-white p-2 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
@@ -479,7 +475,6 @@ export default function Home() {
                 ⌕
 
               </div>
-
 
               <input
 
@@ -492,7 +487,6 @@ export default function Home() {
                 className="min-w-0 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-black/30"
 
               />
-
 
               <button
 
@@ -511,7 +505,6 @@ export default function Home() {
             </div>
 
           </form>
-
 
           <div className="mt-3 flex justify-center gap-2 text-[11px] text-black/35">
 
@@ -544,7 +537,6 @@ export default function Home() {
             </button>
 
           </div>
-
 
           <section className="mt-8">
             <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
@@ -620,7 +612,6 @@ export default function Home() {
 
         </section>
 
-
         {result && entity && market && (
 
           <section className="mt-14">
@@ -643,13 +634,11 @@ export default function Home() {
 
                 </div>
 
-
                 <h2 className="text-3xl font-semibold tracking-[-0.04em]">
 
                   {entity.name}
 
                 </h2>
-
 
                 <p className="mt-1 font-mono text-xs text-black/40">
 
@@ -658,7 +647,6 @@ export default function Home() {
                 </p>
 
               </div>
-
 
               <div className="text-left sm:text-right">
 
@@ -710,7 +698,6 @@ export default function Home() {
 
                 />
 
-
                 {result.verification === null
 
                     ? "Verification unavailable"
@@ -727,7 +714,6 @@ export default function Home() {
 
           </div>
 
-
             <div className="grid gap-5 lg:grid-cols-[1.7fr_1fr]">
 
               <div className="rounded-2xl border border-black/[0.08] bg-white p-6">
@@ -742,7 +728,6 @@ export default function Home() {
 
                     </p>
 
-
                     <div className="mt-3 flex items-end gap-3">
 
                       <span className="text-4xl font-semibold tracking-[-0.04em]">
@@ -750,7 +735,6 @@ export default function Home() {
                         ₹{formatNumber(market.latest_close)}
 
                       </span>
-
 
                       <span
 
@@ -774,7 +758,6 @@ export default function Home() {
 
                   </div>
 
-
                   <div className="text-right text-[11px] text-black/35">
 
                     <div>{formatDate(market.start)}</div>
@@ -785,70 +768,85 @@ export default function Home() {
 
                 </div>
 
-
                 <div className="mt-8">
 
-                  <div className="relative h-40 overflow-hidden rounded-xl bg-[#fafaf8]">
+                  <div className="rounded-xl bg-[#fafaf8] p-3 sm:p-4">
+  {chart ? (
+    <>
+      <div className="flex items-start justify-between px-1 text-[10px] text-black/40">
+        <span>High ₹{formatNumber(chart.high)}</span>
+        <span>Low ₹{formatNumber(chart.low)}</span>
+      </div>
 
-                    <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-black/[0.08]" />
+      <svg
+        viewBox={`0 0 ${chart.width} ${chart.height}`}
+        role="img"
+        aria-label={`Historical closing prices from ${chart.firstDate} to ${chart.lastDate}`}
+        className="h-48 w-full sm:h-56"
+        preserveAspectRatio="none"
+      >
+        {[0.25, 0.5, 0.75].map((fraction) => (
+          <line
+            key={fraction}
+            x1="0"
+            x2={chart.width}
+            y1={chart.height * fraction}
+            y2={chart.height * fraction}
+            stroke="currentColor"
+            strokeOpacity="0.08"
+            strokeDasharray="4 6"
+          />
+        ))}
 
-                    <div className="absolute inset-x-0 bottom-6 border-t border-black/[0.05]" />
+        {chart.points.length > 1 && (
+          <polyline
+            points={chart.line}
+            fill="none"
+            stroke="#527b68"
+            strokeWidth="3"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
 
+        {chart.points.map((point, index) => (
+          <circle
+            key={`${point.date}-${index}`}
+            cx={point.x}
+            cy={point.y}
+            r={index === chart.points.length - 1 ? 4 : 1.8}
+            fill={index === chart.points.length - 1 ? "#171717" : "#527b68"}
+          >
+            <title>{`${point.date}: ₹${formatNumber(point.value)}`}</title>
+          </circle>
+        ))}
+      </svg>
 
-                    <div className="absolute bottom-5 left-5 right-5 h-px bg-black/10">
+      <div className="flex justify-between px-1 text-[10px] text-black/35">
+        <span>{formatDate(chart.firstDate)}</span>
+        <span>{formatDate(chart.lastDate)}</span>
+      </div>
 
-                      <div
+      <div className="mt-3 border-t border-black/[0.07] pt-3">
+        <p className="text-[10px] text-black/35">Latest close</p>
+        <p className="mt-1 text-sm font-medium">
+          ₹{formatNumber(chart.points[chart.points.length - 1].value)}
+        </p>
+      </div>
+    </>
+  ) : (
+    <div className="flex h-48 items-center justify-center text-center text-xs text-black/40">
+      Historical price data is unavailable for this research run.
+    </div>
+  )}
+</div>
 
-                        className="absolute -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#171717] shadow-sm"
-
-                        style={{
-
-                          left: `${range?.position ?? 50}%`,
-
-                        }}
-
-                      />
-
-                    </div>
-
-
-                    <div className="absolute left-5 top-5 text-[10px] text-black/35">
-
-                      High ₹{formatNumber(market.period_high)}
-
-                    </div>
-
-
-                    <div className="absolute bottom-10 left-5 text-[10px] text-black/35">
-
-                      Low ₹{formatNumber(market.period_low)}
-
-                    </div>
-
-
-                    <div className="absolute bottom-10 right-5 text-right text-[10px] text-black/35">
-
-                      <div>Latest</div>
-
-                      <div className="mt-0.5 font-medium text-black/60">
-
-                        ₹{formatNumber(market.latest_close)}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-
-                  <p className="mt-3 text-[10px] text-black/30">
-
-                    Price range indicator · {market.observations} observations
-
-                  </p>
+<p className="mt-3 text-[10px] text-black/30">
+  Historical closing prices · {chart?.points.length ?? 0} observations
+</p>
 
                 </div>
-
 
                 <div className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-black/[0.07] pt-6 sm:grid-cols-4">
 
@@ -888,7 +886,6 @@ export default function Home() {
 
               </div>
 
-
               <div className="rounded-2xl border border-black/[0.08] bg-white p-6">
 
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-black/35">
@@ -896,7 +893,6 @@ export default function Home() {
                   Data coverage
 
                 </p>
-
 
                 <div className="mt-6 space-y-5">
 
@@ -934,7 +930,6 @@ export default function Home() {
 
                 </div>
 
-
                 <div className="mt-7 border-t border-black/[0.07] pt-5">
 
                   <p className="text-[10px] uppercase tracking-[0.14em] text-black/30">
@@ -956,7 +951,6 @@ export default function Home() {
               </div>
 
             </div>
-
 
             <div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
 
@@ -980,7 +974,6 @@ export default function Home() {
 
                   </div>
 
-
                   {result.ai_analysis && (
 
                     <span className="rounded-full bg-black/[0.04] px-3 py-1 text-[10px] text-black/45">
@@ -992,7 +985,6 @@ export default function Home() {
                   )}
 
                 </div>
-
 
                 {ai ? (
 
@@ -1014,7 +1006,6 @@ export default function Home() {
 
                     </div>
 
-
                     <AnalysisList
 
                       title="Key findings"
@@ -1022,7 +1013,6 @@ export default function Home() {
                       items={ai.key_findings}
 
                     />
-
 
                     <AnalysisList
 
@@ -1032,7 +1022,6 @@ export default function Home() {
 
                     />
 
-
                     <AnalysisList
 
                       title="Interpretation"
@@ -1040,7 +1029,6 @@ export default function Home() {
                       items={ai.interpretation}
 
                     />
-
 
                     <AnalysisList title="Risks" items={ai.risks} />
 
@@ -1072,7 +1060,6 @@ export default function Home() {
 
               </div>
 
-
               <div className="space-y-5">
 
                 <div className="rounded-2xl border border-black/[0.08] bg-white p-6">
@@ -1082,7 +1069,6 @@ export default function Home() {
                     Evidence
 
                   </p>
-
 
                   <p className="mt-2 text-xs leading-5 text-black/45">
 
@@ -1132,7 +1118,6 @@ export default function Home() {
 
                   </div>
 
-
                   <div className="mt-5 max-h-[420px] space-y-2 overflow-auto pr-1">
 
                     {result.research.evidence.map((item, index) => (
@@ -1152,7 +1137,6 @@ export default function Home() {
                             {item.source}
 
                           </span>
-
 
                           <div className="flex items-center gap-3">
 
@@ -1177,7 +1161,6 @@ export default function Home() {
 
                         </div>
 
-
                         <p className="mt-2 text-xs leading-5 text-black/55">
 
                           {item.description}
@@ -1191,7 +1174,6 @@ export default function Home() {
                   </div>
 
                 </div>
-
 
                 <div className="rounded-2xl border border-black/[0.08] bg-white p-6">
                   <div className="flex items-center justify-between gap-3">
@@ -1253,7 +1235,6 @@ export default function Home() {
 
                   </p>
 
-
                   <div className="mt-4 space-y-3">
 
                     {result.research.limitations.map((limitation) => (
@@ -1280,7 +1261,6 @@ export default function Home() {
 
             </div>
 
-
             <footer className="mt-10 border-t border-black/[0.07] py-7 text-[10px] leading-5 text-black/30">
 
               QuantMind Research Workspace · Evidence before trust · Market data
@@ -1292,7 +1272,6 @@ export default function Home() {
           </section>
 
         )}
-
 
         {!result && !loading && (
 
@@ -1320,7 +1299,6 @@ export default function Home() {
 
 }
 
-
 function Metric({ label, value }: { label: string; value: string }) {
 
   return (
@@ -1341,7 +1319,6 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 }
 
-
 function Coverage({ label, value }: { label: string; value: string }) {
 
   return (
@@ -1357,7 +1334,6 @@ function Coverage({ label, value }: { label: string; value: string }) {
   );
 
 }
-
 
 function AnalysisList({
 
@@ -1375,7 +1351,6 @@ function AnalysisList({
 
   if (!items.length) return null;
 
-
   return (
 
     <div>
@@ -1385,7 +1360,6 @@ function AnalysisList({
         {title}
 
       </p>
-
 
       <div className="mt-3 space-y-2">
 
@@ -1414,7 +1388,6 @@ function AnalysisList({
   );
 
 }
-
 
 function Feature({ label }: { label: string }) {
 
