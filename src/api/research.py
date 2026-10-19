@@ -166,6 +166,19 @@ def get_research(research_run_id: str) -> ResearchResponse:
             "and evidence coverage was derived from persisted evidence rows."
         )
 
+    price_history = [
+        {
+            "date": item["metadata"]["date"],
+            "close": item["metadata"]["close"],
+            "source": item["metadata"]["source"],
+        }
+        for item in persisted["evidence"]
+        if isinstance(item.get("metadata"), dict)
+        and item["metadata"].get("date")
+        and item["metadata"].get("close") is not None
+        and item["metadata"].get("source")
+    ]
+
     research_payload = {
         "query": persisted["query"],
         "entity": metadata["entity"],
@@ -174,6 +187,7 @@ def get_research(research_run_id: str) -> ResearchResponse:
         "evidence": evidence,
         "limitations": limitations,
         "news": metadata.get("news", []),
+        "price_history": price_history,
     }
 
     research = ResearchResult.model_validate(research_payload)

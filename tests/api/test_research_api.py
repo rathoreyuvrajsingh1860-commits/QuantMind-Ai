@@ -327,6 +327,7 @@ def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
                 "metadata": {
                     "source": "alpha_vantage",
                     "date": "2026-05-11",
+                    "close": "1388.150000",
                 },
             },
             {
@@ -339,6 +340,7 @@ def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
                 "metadata": {
                     "source": "alpha_vantage",
                     "date": "2026-10-01",
+                    "close": "1166.000000",
                 },
             },
         ],
@@ -358,6 +360,18 @@ def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
 
     assert data["verification"] is None
     assert data["research"]["news"] == []
+    assert data["research"]["price_history"] == [
+        {
+            "date": "2026-05-11",
+            "close": "1388.150000",
+            "source": "alpha_vantage",
+        },
+        {
+            "date": "2026-10-01",
+            "close": "1166.000000",
+            "source": "alpha_vantage",
+        },
+    ]
 
     assert data["research"]["coverage"] == {
         "requested_start": "2025-10-03",
