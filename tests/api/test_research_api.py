@@ -132,6 +132,69 @@ def test_research_api_skips_ai_when_verification_fails() -> None:
     research_service.close.assert_called_once()
 
 
+def test_research_api_logs_ai_failure_without_failing_research(caplog) -> None:
+    research_service = MagicMock()
+    research_service.research.return_value = make_research()
+    research_service.last_prices = [
+        PriceBar(
+            symbol="RELIANCE:BSE",
+            date=date(2026, 9, 24),
+            open=Decimal(1238),
+            high=Decimal(1250),
+            low=Decimal(1230),
+            close=Decimal(1245),
+            volume=100000,
+            adjusted_close=Decimal(1245),
+            source="test_provider",
+            retrieved_at=datetime(2026, 9, 25),
+        )
+    ]
+
+    verifier = MagicMock()
+    verifier.verify_market_research.return_value = VerificationResult(
+        passed=True,
+        issues=[],
+    )
+
+    repository = MagicMock()
+    repository.create_research_run.return_value = uuid4()
+    repository.save_research.return_value = uuid4()
+
+    ai_service = MagicMock()
+    ai_service.analyze.side_effect = RuntimeError("simulated provider failure")
+
+    with (
+        patch(
+            "src.api.research.create_research_service",
+            return_value=research_service,
+        ),
+        patch(
+            "src.api.research.VerificationService",
+            return_value=verifier,
+        ),
+        patch(
+            "src.api.research.ResearchRepository",
+            return_value=repository,
+        ),
+        patch(
+            "src.api.research.create_ai_research_service",
+            return_value=ai_service,
+        ),
+        caplog.at_level("ERROR", logger="src.api.research"),
+    ):
+        response = client.post(
+            "/api/research",
+            json={"query": "RELIANCE:BSE"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["ai_analysis"] is None
+    assert "AI research analysis failed" in caplog.text
+    assert "simulated provider failure" in caplog.text
+    repository.save_research.assert_called_once()
+    research_service.close.assert_called_once()
+
+
 def test_research_api_returns_400_for_ambiguous_company() -> None:
     research_service = MagicMock()
     research_service.research.side_effect = ValueError(

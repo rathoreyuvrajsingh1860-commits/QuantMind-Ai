@@ -1,4 +1,5 @@
 import json
+import logging
 from contextlib import suppress
 from datetime import date
 from uuid import UUID
@@ -257,6 +258,9 @@ def research(request: ResearchRequest) -> ResearchResponse:
                     ai_result = ai_service.analyze(result)
                 except Exception:
                     # AI failure must not destroy deterministic research.
+                    logging.getLogger(__name__).exception(
+                        "AI research analysis failed; returning deterministic research"
+                    )
                     ai_result = None
 
         research_run_id = repository.save_research(
