@@ -1153,7 +1153,9 @@ export default function Home() {
 
                             <span className="text-[10px] text-black/30">
 
-                              {formatDate(item.description.slice(-10))}
+                              {formatDate(
+                                item.description.match(/\bon (\d{4}-\d{2}-\d{2})\b/)?.[1] ?? null
+                              )}
 
                             </span>
 
