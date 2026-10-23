@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime
 
 from src.config.settings import settings
@@ -72,6 +73,71 @@ def create_financial_data_provider() -> FinancialDataProvider:
     return create_financial_data_providers()[0]
 
 
+def _rank_company_search_results(
+    query: str,
+    companies: list[CompanyProfile],
+) -> list[CompanyProfile]:
+    """Rank search results by ticker, normalized company name, and relevance."""
+    normalized_query = query.strip().casefold()
+
+    if not normalized_query:
+        return companies
+
+    # Common legal suffixes that should not affect an exact company-name match.
+    legal_suffixes = {
+        "inc",
+        "incorporated",
+        "ltd",
+        "limited",
+        "corp",
+        "corporation",
+        "llc",
+        "plc",
+        "lp",
+    }
+
+    def normalized_company_name(name: str) -> str:
+        words = name.casefold().strip().split()
+
+        while words and words[-1].rstrip(".,") in legal_suffixes:
+            words.pop()
+
+        return " ".join(words)
+
+    def rank(company: CompanyProfile) -> tuple[int, int, str]:
+        symbol = company.symbol.strip().casefold()
+        name = company.name.strip().casefold()
+        core_name = normalized_company_name(company.name)
+
+        if symbol == normalized_query:
+            relevance = 0
+        elif core_name == normalized_query:
+            relevance = 1
+        elif symbol.startswith(normalized_query):
+            relevance = 2
+        elif name.startswith(normalized_query):
+            relevance = 3
+        elif normalized_query in name:
+            relevance = 4
+        else:
+            relevance = 5
+
+        us_listing = (
+            0
+            if (company.country or "").casefold() == "united states"
+            and (company.currency or "").upper() == "USD"
+            else 1
+        )
+
+        return (relevance, us_listing, name)
+
+    # Preserve compatibility with providers or test doubles returning strings.
+    if all(isinstance(company, str) for company in companies):
+        return companies
+
+    return sorted(companies, key=rank)
+
+
 class DataService:
     """Application service for financial data providers."""
 
@@ -142,6 +208,13 @@ class DataService:
                 return result
 
             except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "Financial data provider %s failed for %s (%s): %s",
+                    provider_name,
+                    operation_name,
+                    capability.value,
+                    str(exc),
+                )
                 metrics.record_attempt(1)
 
                 error_code = getattr(
@@ -174,11 +247,18 @@ class DataService:
         self,
         query: str,
     ) -> list[CompanyProfile]:
-        return self._execute_with_fallback(
+        normalized_query = query.strip()
+
+        if not normalized_query:
+            return []
+
+        companies = self._execute_with_fallback(
             DataCapability.COMPANY_SEARCH,
-            lambda provider: provider.search_company(query),
+            lambda provider: provider.search_company(normalized_query),
             "search_company",
         )
+
+        return _rank_company_search_results(normalized_query, companies)
 
     def get_company_profile(
         self,

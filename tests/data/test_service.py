@@ -13,8 +13,82 @@ from src.data.errors import (
 )
 from src.data.service import (
     DataService,
+    _rank_company_search_results,
     create_financial_data_provider,
 )
+
+
+from src.data.models import CompanyProfile
+
+
+def test_company_search_ranks_exact_ticker_first():
+    companies = [
+        CompanyProfile(
+            symbol="AAPLUSTRAD.BSE",
+            name="AA Plus Tradelink Ltd",
+            exchange="India/Bombay",
+            country="India",
+            currency="INR",
+        ),
+        CompanyProfile(
+            symbol="AAPL",
+            name="Apple Inc",
+            exchange="United States",
+            country="United States",
+            currency="USD",
+        ),
+    ]
+
+    results = _rank_company_search_results("AAPL", companies)
+
+    assert results[0].symbol == "AAPL"
+
+
+def test_company_search_ranks_exact_company_name_first():
+    companies = [
+        CompanyProfile(
+            symbol="AGPL",
+            name="Apple Green Holding Inc",
+            exchange="United States",
+            country="United States",
+            currency="USD",
+        ),
+        CompanyProfile(
+            symbol="AAPL",
+            name="Apple Inc",
+            exchange="United States",
+            country="United States",
+            currency="USD",
+        ),
+    ]
+
+    results = _rank_company_search_results("Apple", companies)
+
+    assert results[0].symbol == "AAPL"
+
+
+def test_company_search_ranks_reliance_industries_first():
+    companies = [
+        CompanyProfile(
+            symbol="RLBS",
+            name="Reliance Bancshares Inc",
+            exchange="United States",
+            country="United States",
+            currency="USD",
+        ),
+        CompanyProfile(
+            symbol="RELIANCE",
+            name="Reliance Industries Ltd.",
+            exchange="NSE",
+            country="India",
+            currency="INR",
+        ),
+    ]
+
+    results = _rank_company_search_results("Reliance", companies)
+
+    assert results[0].symbol == "RELIANCE"
+
 
 
 def test_create_alpha_vantage_provider():
