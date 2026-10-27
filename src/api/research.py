@@ -26,7 +26,9 @@ class ResearchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     query: str
+
     start: date | None = None
+
     end: date | None = None
 
 
@@ -34,10 +36,15 @@ class ResearchHistoryItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
+
     query: str
+
     status: str
+
     model: str | None = None
+
     started_at: str
+
     completed_at: str | None = None
 
 
@@ -45,14 +52,20 @@ class ResearchResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     research_run_id: str
+
     research: ResearchResult
+
     verification: VerificationResult | None
+
     ai_analysis: AIResearchResult | None = None
 
 
 def create_research_service() -> ResearchService:
+
     data_service = create_data_service()
+
     market_service = MarketService(data_service)
+
     return ResearchService(market_service)
 
 
@@ -60,21 +73,42 @@ def create_ai_research_service() -> AIResearchService | None:
     if not settings.ai_api_key or not settings.ai_model:
         return None
 
-    provider = OpenAICompatibleProvider(
-        api_key=settings.ai_api_key,
-        model=settings.ai_model,
-        base_url=settings.ai_base_url,
-    )
+    primary_model = settings.ai_model.strip()
+    configured_fallbacks = [
+        settings.ai_fallback_model,
+        *settings.ai_fallback_models.split(","),
+    ]
 
-    return AIResearchService(provider)
+    fallback_models = []
+    seen_models = {primary_model}
+
+    for model in configured_fallbacks:
+        model = model.strip()
+        if model and model not in seen_models:
+            fallback_models.append(model)
+            seen_models.add(model)
+
+    def build_provider(model: str) -> OpenAICompatibleProvider:
+        return OpenAICompatibleProvider(
+            api_key=settings.ai_api_key,
+            model=model,
+            base_url=settings.ai_base_url,
+        )
+
+    return AIResearchService(
+        build_provider(primary_model),
+        [build_provider(model) for model in fallback_models],
+    )
 
 
 @router.get("/history", response_model=list[ResearchHistoryItem])
 def research_history(limit: int = 20) -> list[ResearchHistoryItem]:
+
     repository = ResearchRepository()
 
     try:
         rows = repository.list_recent_research(limit=limit)
+
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
@@ -100,8 +134,10 @@ def research_history(limit: int = 20) -> list[ResearchHistoryItem]:
 
 @router.get("/{research_run_id}", response_model=ResearchResponse)
 def get_research(research_run_id: str) -> ResearchResponse:
+
     try:
         run_id = UUID(research_run_id)
+
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
@@ -109,6 +145,7 @@ def get_research(research_run_id: str) -> ResearchResponse:
         ) from exc
 
     repository = ResearchRepository()
+
     persisted = repository.get_research(run_id)
 
     if persisted is None:
@@ -141,12 +178,16 @@ def get_research(research_run_id: str) -> ResearchResponse:
     market_metadata = metadata["market"]
 
     coverage = metadata.get("coverage")
+
     limitations = list(metadata.get("limitations", []))
 
     if coverage is None:
         # Legacy research runs predate persisted coverage metadata.
+
         # Reconstruct requested period from the persisted market payload,
+
         # but derive evidence coverage from the actual persisted evidence rows.
+
         evidence_dates = [
             item["metadata"].get("date")
             for item in persisted["evidence"]
@@ -167,28 +208,25 @@ def get_research(research_run_id: str) -> ResearchResponse:
             "and evidence coverage was derived from persisted evidence rows."
         )
 
-    price_history = [
-        {
-            "date": item["metadata"]["date"],
-            "close": item["metadata"]["close"],
-            "source": item["metadata"]["source"],
-        }
-        for item in persisted["evidence"]
-        if isinstance(item.get("metadata"), dict)
-        and item["metadata"].get("date")
-        and item["metadata"].get("close") is not None
-        and item["metadata"].get("source")
-    ]
-
     research_payload = {
         "query": persisted["query"],
         "entity": metadata["entity"],
         "market": market_metadata,
+        "price_history": [
+            {
+                "date": item["metadata"]["date"],
+                "close": item["metadata"]["close"],
+                "source": item["metadata"]["source"],
+            }
+            for item in persisted["evidence"]
+            if item.get("metadata")
+            and item["metadata"].get("date")
+            and item["metadata"].get("close") is not None
+        ],
         "coverage": coverage,
         "evidence": evidence,
         "limitations": limitations,
         "news": metadata.get("news", []),
-        "price_history": price_history,
     }
 
     research = ResearchResult.model_validate(research_payload)
@@ -206,11 +244,13 @@ def get_research(research_run_id: str) -> ResearchResponse:
     if persisted["answer"]:
         try:
             analysis_payload = json.loads(persisted["answer"])
+
             ai_result = AIResearchResult(
                 analysis=analysis_payload,
                 provider=metadata.get("ai_provider") or "unknown",
                 model=persisted["model"] or metadata.get("ai_model") or "unknown",
             )
+
         except (json.JSONDecodeError, TypeError, ValueError) as exc:
             raise HTTPException(
                 status_code=500,
@@ -227,9 +267,13 @@ def get_research(research_run_id: str) -> ResearchResponse:
 
 @router.post("", response_model=ResearchResponse)
 def research(request: ResearchRequest) -> ResearchResponse:
+
     service = create_research_service()
+
     repository = ResearchRepository()
+
     verifier = VerificationService()
+
     research_run_id: UUID | None = None
 
     try:
@@ -256,11 +300,14 @@ def research(request: ResearchRequest) -> ResearchResponse:
             if ai_service is not None:
                 try:
                     ai_result = ai_service.analyze(result)
+
                 except Exception:
                     # AI failure must not destroy deterministic research.
+
                     logging.getLogger(__name__).exception(
                         "AI research analysis failed; returning deterministic research"
                     )
+
                     ai_result = None
 
         research_run_id = repository.save_research(
@@ -294,10 +341,12 @@ def research(request: ResearchRequest) -> ResearchResponse:
                         status="failed",
                         metadata={"error": str(exc)},
                     )
+
             raise HTTPException(
                 status_code=502,
                 detail="Market data provider unavailable",
             ) from exc
+
         if research_run_id is not None:
             with suppress(Exception):
                 repository.update_research_run_status(
@@ -305,6 +354,7 @@ def research(request: ResearchRequest) -> ResearchResponse:
                     status="failed",
                     metadata={"error": str(exc)},
                 )
+
         raise
 
     except Exception as exc:

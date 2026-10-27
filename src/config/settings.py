@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     ai_model: str = ""
     ai_base_url: str = "https://api.openai.com/v1"
     ai_fallback_model: str = ""
+    ai_fallback_models: str = ""
 
     financial_data_provider: str = ""
     financial_data_api_key: str = ""

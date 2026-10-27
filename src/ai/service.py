@@ -1,7 +1,12 @@
 import json
+import logging
 from typing import Any
 
-from src.ai.base import AIProvider, AIProviderError
+from src.ai.base import (
+    AIProvider,
+    AIProviderError,
+    AIProviderUnavailableError,
+)
 from src.ai.models import AIResearchResult, ResearchAnalysis
 from src.research.models import ResearchResult
 
@@ -41,24 +46,47 @@ Return ONLY valid JSON matching this structure:
 
 
 class AIResearchService:
-    def __init__(self, provider: AIProvider) -> None:
-        self.provider = provider
+    def __init__(
+        self, provider: AIProvider, fallback_providers: list[AIProvider] | None = None
+    ) -> None:
+        self.providers = [provider, *(fallback_providers or [])]
 
     def analyze(self, research: ResearchResult) -> AIResearchResult:
         context = self._build_context(research)
+        errors: list[str] = []
 
-        message = self.provider.generate(
-            system_prompt=SYSTEM_PROMPT,
-            user_prompt=context,
-        )
+        for index, provider in enumerate(self.providers):
+            try:
+                message = provider.generate(
+                    system_prompt=SYSTEM_PROMPT,
+                    user_prompt=context,
+                )
+                analysis = self._parse_analysis(message.content)
+                return AIResearchResult(
+                    analysis=analysis,
+                    provider=message.provider,
+                    model=message.model,
+                )
+            except AIProviderError as exc:
+                errors.append(f"{provider.name}: {exc}")
 
-        analysis = self._parse_analysis(message.content)
+                # Continue only for explicitly retryable provider failures.
+                # Malformed AI output is also eligible for another model.
+                should_fallback = (
+                    isinstance(exc, AIProviderUnavailableError)
+                    or "non-JSON" in str(exc)
+                    or "invalid research analysis" in str(exc)
+                )
 
-        return AIResearchResult(
-            analysis=analysis,
-            provider=message.provider,
-            model=message.model,
-        )
+                if not should_fallback or index + 1 >= len(self.providers):
+                    break
+
+                logging.getLogger(__name__).warning(
+                    "AI model %s failed; trying configured fallback",
+                    provider.name,
+                )
+
+        raise AIProviderError("AI research analysis failed: " + " | ".join(errors))
 
     @staticmethod
     def _build_context(research: ResearchResult) -> str:

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from src.ai.base import AIProvider
+from src.ai.base import AIProvider, AIProviderUnavailableError
 from src.ai.models import AIMessage
 from src.ai.service import AIResearchService
 from src.research.models import (
@@ -128,3 +128,50 @@ def test_ai_research_service_accepts_markdown_json_fence() -> None:
     result = AIResearchService(provider).analyze(make_research())
 
     assert result.analysis.executive_summary == "Summary"
+
+
+class FailingAIProvider(AIProvider):
+    name = "failing"
+
+    def generate(self, *, system_prompt: str, user_prompt: str) -> AIMessage:
+
+        raise AIProviderUnavailableError("simulated provider failure")
+
+
+def test_ai_research_service_uses_fallback_after_provider_error() -> None:
+    primary = FailingAIProvider()
+    fallback = FakeAIProvider(
+        """{
+          "executive_summary": "Fallback succeeded",
+          "key_findings": [],
+          "factual_observations": [],
+          "interpretation": [],
+          "risks": [],
+          "uncertainty": [],
+          "limitations": []
+        }"""
+    )
+
+    result = AIResearchService(primary, [fallback]).analyze(make_research())
+
+    assert result.model == "fake-model"
+    assert result.analysis.executive_summary == "Fallback succeeded"
+
+
+def test_ai_research_service_uses_fallback_after_invalid_json() -> None:
+    primary = FakeAIProvider("not valid JSON")
+    fallback = FakeAIProvider(
+        """{
+          "executive_summary": "Second model succeeded",
+          "key_findings": [],
+          "factual_observations": [],
+          "interpretation": [],
+          "risks": [],
+          "uncertainty": [],
+          "limitations": []
+        }"""
+    )
+
+    result = AIResearchService(primary, [fallback]).analyze(make_research())
+
+    assert result.analysis.executive_summary == "Second model succeeded"

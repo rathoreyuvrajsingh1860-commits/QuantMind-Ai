@@ -4,15 +4,31 @@ from src.ai.models import AIMessage
 
 
 class AIProvider(ABC):
-    """Provider-neutral interface for QuantMind AI models."""
-
     name: str
 
     @abstractmethod
     def generate(self, *, system_prompt: str, user_prompt: str) -> AIMessage:
-        """Generate a response from the configured AI provider."""
         raise NotImplementedError
 
 
 class AIProviderError(RuntimeError):
-    """Raised when an AI provider cannot complete a request."""
+    """Base error raised by an AI provider."""
+
+    def __init__(self, message: str, *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+class AIProviderAuthenticationError(AIProviderError):
+    """Authentication or permission failure; do not retry with another model."""
+
+
+class AIProviderRequestError(AIProviderError):
+    """Invalid request or unsupported request configuration."""
+
+
+class AIProviderUnavailableError(AIProviderError):
+    """Temporary network, rate-limit, or upstream server failure."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, retryable=True)

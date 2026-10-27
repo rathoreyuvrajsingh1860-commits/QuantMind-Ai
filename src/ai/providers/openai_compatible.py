@@ -1,6 +1,12 @@
 import httpx
 
-from src.ai.base import AIProvider, AIProviderError
+from src.ai.base import (
+    AIProvider,
+    AIProviderAuthenticationError,
+    AIProviderError,
+    AIProviderRequestError,
+    AIProviderUnavailableError,
+)
 from src.ai.models import AIMessage
 
 
@@ -64,13 +70,27 @@ class OpenAICompatibleProvider(AIProvider):
                 json=payload,
                 timeout=httpx.Timeout(self.timeout, connect=10.0),
             )
+        except httpx.TimeoutException as exc:
+            raise AIProviderUnavailableError("AI provider request timed out") from exc
         except httpx.HTTPError as exc:
-            raise AIProviderError(f"AI provider request failed: {exc}") from exc
+            raise AIProviderUnavailableError(
+                f"AI provider network request failed: {type(exc).__name__}"
+            ) from exc
+
+        if response.status_code in (401, 403):
+            raise AIProviderAuthenticationError(
+                f"AI provider authentication/permission failure "
+                f"(HTTP {response.status_code})"
+            )
+
+        if response.status_code == 429 or response.status_code >= 500:
+            raise AIProviderUnavailableError(
+                f"AI provider temporarily unavailable (HTTP {response.status_code})"
+            )
 
         if response.status_code >= 400:
-            detail = response.text[:1000]
-            raise AIProviderError(
-                f"AI provider returned HTTP {response.status_code}: {detail}"
+            raise AIProviderRequestError(
+                f"AI provider rejected the request (HTTP {response.status_code})"
             )
 
         try:
