@@ -71,6 +71,11 @@ class TwelveDataProvider(FinancialDataProvider):
                 f"Twelve Data server error: HTTP {response.status_code}"
             )
 
+        if response.status_code == 404:
+            raise UnsupportedDataError(
+                f"Twelve Data endpoint or data unavailable: HTTP {response.status_code}"
+            )
+
         if response.status_code >= 400:
             raise ProviderInvalidRequestError(
                 f"Twelve Data request failed: HTTP {response.status_code}"
