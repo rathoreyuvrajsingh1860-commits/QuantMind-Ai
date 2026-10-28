@@ -106,6 +106,26 @@ def test_twelve_data_server_error_raises_provider_server_error():
             pass
 
 
+def test_twelve_data_404_raises_unsupported_data_error():
+    provider = object.__new__(TwelveDataProvider)
+    provider.client = MagicMock()
+
+    response = MagicMock()
+    response.status_code = 404
+    provider.client.get.return_value = response
+
+    from src.data.errors import UnsupportedDataError
+
+    with patch("src.data.providers.twelve_data.retry_with_backoff") as mock_retry:
+        mock_retry.side_effect = lambda operation, **kwargs: operation()
+
+        with pytest.raises(UnsupportedDataError, match="HTTP 404"):
+            provider._request(
+                "/time_series",
+                params={"symbol": "TEST"},
+            )
+
+
 def test_twelve_data_authentication_error_raises_provider_authentication_error():
     provider = object.__new__(TwelveDataProvider)
     provider.client = MagicMock()
