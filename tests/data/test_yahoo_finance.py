@@ -14,6 +14,9 @@ from src.data.providers.yahoo_finance import YahooFinanceProvider
     [
         ("RELIANCE:NSE", "RELIANCE.NS"),
         ("RELIANCE:BSE", "RELIANCE.BO"),
+        ("RELIANCE.NSE", "RELIANCE.NS"),
+        ("RELIANCE.BSE", "RELIANCE.BO"),
+        ("reliance.bse", "reliance.BO"),
         ("AAPL:NASDAQ", "AAPL"),
         ("IBM:NYSE", "IBM"),
         ("RELIANCE", "RELIANCE"),

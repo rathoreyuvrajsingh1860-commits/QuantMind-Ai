@@ -19,20 +19,26 @@ class YahooFinanceProvider(FinancialDataProvider):
 
     @staticmethod
     def _normalize_symbol(symbol: str) -> str:
-        if ":" not in symbol:
-            return symbol.strip()
+        symbol = symbol.strip()
+        if ":" in symbol:
+            ticker, exchange = symbol.rsplit(":", 1)
+            exchange = exchange.strip().upper()
+            suffixes = {
+                "NSE": ".NS",
+                "BSE": ".BO",
+                "NASDAQ": "",
+                "NYSE": "",
+            }
+            if exchange not in suffixes:
+                raise ValueError(f"Unsupported Yahoo Finance exchange: {exchange}")
+            return f"{ticker.strip()}{suffixes[exchange]}"
 
-        ticker, exchange = symbol.rsplit(":", 1)
-        exchange = exchange.strip().upper()
-        suffixes = {
-            "NSE": ".NS",
-            "BSE": ".BO",
-            "NASDAQ": "",
-            "NYSE": "",
-        }
-        if exchange not in suffixes:
-            raise ValueError(f"Unsupported Yahoo Finance exchange: {exchange}")
-        return f"{ticker.strip()}{suffixes[exchange]}"
+        upper_symbol = symbol.upper()
+        if upper_symbol.endswith(".NSE"):
+            return f"{symbol[:-4]}.NS"
+        if upper_symbol.endswith(".BSE"):
+            return f"{symbol[:-4]}.BO"
+        return symbol
 
     def search_company(self, query: str) -> list[CompanyProfile]:
         raise UnsupportedDataError("Yahoo Finance adapter supports price history only")
