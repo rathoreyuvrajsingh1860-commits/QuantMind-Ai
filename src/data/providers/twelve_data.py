@@ -105,6 +105,12 @@ class TwelveDataProvider(FinancialDataProvider):
         )
 
     def search_company(self, query: str) -> list[CompanyProfile]:
+        """Search instruments; shared DataService handles result ranking."""
+        query = query.strip()
+
+        if not query:
+            return []
+
         payload = self._request(
             "/symbol_search",
             params={"symbol": query},
@@ -113,12 +119,13 @@ class TwelveDataProvider(FinancialDataProvider):
         return [
             CompanyProfile(
                 symbol=item["symbol"],
-                name=item.get("instrument_name", item["symbol"]),
+                name=item.get("instrument_name") or item["symbol"],
                 exchange=item.get("exchange"),
                 country=item.get("country"),
                 currency=item.get("currency"),
             )
             for item in payload.get("data", [])
+            if item.get("symbol")
         ]
 
     def get_company_profile(self, symbol: str) -> CompanyProfile:

@@ -116,3 +116,34 @@ def test_price_history_skips_rows_with_nan_close(monkeypatch):
     assert len(bars) == 1
     assert bars[0].date == date(2026, 10, 8)
     assert bars[0].close == 105
+
+
+def test_price_history_rejects_incomplete_historical_coverage(monkeypatch):
+    frame = pd.DataFrame(
+        {
+            "Open": [1400.0],
+            "High": [1420.0],
+            "Low": [1390.0],
+            "Close": [1410.0],
+            "Adj Close": [1405.0],
+            "Volume": [1000],
+        },
+        index=pd.to_datetime(["2026-10-22"]),
+    )
+
+    ticker = Mock()
+    ticker.history.return_value = frame
+    monkeypatch.setattr(
+        "src.data.providers.yahoo_finance.yf.Ticker",
+        Mock(return_value=ticker),
+    )
+
+    with pytest.raises(
+        UnsupportedDataError,
+        match="does not cover the requested start date",
+    ):
+        YahooFinanceProvider().get_price_history(
+            "RELIANCE:BSE",
+            date(2025, 10, 22),
+            date(2026, 10, 22),
+        )

@@ -173,3 +173,48 @@ def test_twelve_data_falls_back_to_generic_api_key():
     assert provider.api_key == "generic-key"
     assert mock_client.call_args.kwargs["params"] == {"apikey": "generic-key"}
     provider.close()
+
+
+def test_twelve_data_search_returns_empty_for_blank_query():
+    provider = object.__new__(TwelveDataProvider)
+
+    with patch.object(provider, "_request") as mock_request:
+        assert provider.search_company("   ") == []
+
+    mock_request.assert_not_called()
+
+
+def test_twelve_data_search_skips_results_without_symbols():
+    provider = object.__new__(TwelveDataProvider)
+    payload = {
+        "data": [
+            {"instrument_name": "Missing ticker"},
+            {
+                "symbol": "RELIANCE",
+                "instrument_name": "Reliance Industries",
+                "exchange": "NSE",
+            },
+        ]
+    }
+
+    with patch.object(provider, "_request", return_value=payload):
+        results = provider.search_company("RELIANCE")
+
+    assert len(results) == 1
+    assert results[0].symbol == "RELIANCE"
+    assert results[0].name == "Reliance Industries"
+
+
+def test_twelve_data_search_falls_back_to_symbol_for_empty_name():
+    provider = object.__new__(TwelveDataProvider)
+    payload = {
+        "data": [
+            {"symbol": "RELIANCE", "instrument_name": ""},
+        ]
+    }
+
+    with patch.object(provider, "_request", return_value=payload):
+        results = provider.search_company("RELIANCE")
+
+    assert len(results) == 1
+    assert results[0].name == "RELIANCE"
