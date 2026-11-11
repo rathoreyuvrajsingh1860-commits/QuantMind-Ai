@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from src.data.trading_calendar import get_expected_trading_dates
@@ -104,6 +104,7 @@ class MarketRepository:
         instrument_id: UUID,
         start: date,
         end: date,
+        exchange: str | None = None,
     ) -> list[date]:
         """Return expected trading dates without stored price data."""
 
@@ -125,9 +126,30 @@ class MarketRepository:
 
             stored_dates = {row[0] for row in cursor.fetchall()}
 
-        expected_dates = get_expected_trading_dates(start, end)
+        expected_dates = get_expected_trading_dates(start, end, exchange)
 
         return [value for value in expected_dates if value not in stored_dates]
+
+    def get_latest_price_retrieved_at(
+        self,
+        instrument_id: UUID,
+        price_date: date,
+    ) -> datetime | None:
+        """Return the newest retrieval timestamp stored for a trading date."""
+
+        with get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                    SELECT MAX(retrieved_at)
+                    FROM price_history
+                    WHERE instrument_id = %s
+                      AND price_date = %s
+                """,
+                (instrument_id, price_date),
+            )
+            row = cursor.fetchone()
+
+        return row[0] if row else None
 
     def get_price_history(
         self,

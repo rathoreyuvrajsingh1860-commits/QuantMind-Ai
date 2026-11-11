@@ -423,6 +423,10 @@ def test_get_research_reconstructs_legacy_coverage_from_evidence() -> None:
 
     assert data["verification"] is None
     assert data["research"]["news"] == []
+    assert [item["date"] for item in data["research"]["evidence"]] == [
+        "2026-05-11",
+        "2026-10-01",
+    ]
     assert data["research"]["price_history"] == [
         {
             "date": "2026-05-11",

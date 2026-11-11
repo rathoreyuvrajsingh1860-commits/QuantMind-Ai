@@ -11,14 +11,12 @@ from src.data.errors import (
     TemporaryProviderError,
     UnsupportedDataError,
 )
+from src.data.models import CompanyProfile
 from src.data.service import (
     DataService,
     _rank_company_search_results,
     create_financial_data_provider,
 )
-
-
-from src.data.models import CompanyProfile
 
 
 def test_company_search_ranks_exact_ticker_first():
@@ -88,7 +86,6 @@ def test_company_search_ranks_reliance_industries_first():
     results = _rank_company_search_results("Reliance", companies)
 
     assert results[0].symbol == "RELIANCE"
-
 
 
 def test_create_alpha_vantage_provider():

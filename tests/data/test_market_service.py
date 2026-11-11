@@ -1,9 +1,13 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
+import pytest
+
+from src.data.errors import TemporaryProviderError
 from src.data.market_service import MarketService
 from src.data.models import CompanyProfile, PriceBar
+from src.data.trading_calendar import get_expected_trading_dates
 
 
 class FakeDataService:
@@ -47,6 +51,7 @@ class FakeRepository:
     def __init__(self, stored_rows=None):
         self.stored_rows = stored_rows or []
         self.instrument_id = "test-instrument"
+        self.missing_dates_exchange_calls = []
 
     def get_instrument_id(self, symbol, exchange):
         return self.instrument_id
@@ -58,6 +63,14 @@ class FakeRepository:
         dates = [row["date"] for row in self.stored_rows]
 
         return min(dates), max(dates)
+
+    def get_latest_price_retrieved_at(self, instrument_id, price_date):
+        timestamps = [
+            row["retrieved_at"]
+            for row in self.stored_rows
+            if row["date"] == price_date and row.get("retrieved_at") is not None
+        ]
+        return max(timestamps) if timestamps else None
 
     def get_price_history(self, instrument_id, start, end):
         rows = [row for row in self.stored_rows if start <= row["date"] <= end]
@@ -72,21 +85,21 @@ class FakeRepository:
         instrument_id,
         start,
         end,
+        exchange=None,
     ):
+        self.missing_dates_exchange_calls.append(exchange)
+
         stored_dates = {
             row["date"] for row in self.stored_rows if start <= row["date"] <= end
         }
 
-        missing = []
-        current = start
+        expected_dates = get_expected_trading_dates(
+            start,
+            end,
+            exchange,
+        )
 
-        while current <= end:
-            if current.weekday() < 5 and current not in stored_dates:
-                missing.append(current)
-
-            current = date.fromordinal(current.toordinal() + 1)
-
-        return missing
+        return [value for value in expected_dates if value not in stored_dates]
 
 
 def test_market_service_returns_stored_data_without_provider_fetch():
@@ -100,7 +113,7 @@ def test_market_service_returns_stored_data_without_provider_fetch():
             "volume": 100000,
             "adjusted_close": Decimal(1245),
             "source": "alpha_vantage",
-            "retrieved_at": datetime(2026, 9, 25),
+            "retrieved_at": datetime.now(UTC),
         }
     ]
 
@@ -118,6 +131,7 @@ def test_market_service_returns_stored_data_without_provider_fetch():
     assert len(result) == 1
     assert result[0].close == Decimal(1245)
     assert result[0].source == "alpha_vantage"
+    assert repository.missing_dates_exchange_calls == ["BSE"]
 
     # Critical database-first behavior:
     # existing database data should prevent a provider call.
@@ -226,3 +240,225 @@ def test_market_service_triggers_ingestion_when_internal_gap_exists():
         date(2026, 9, 15),
         date(2026, 9, 16),
     ]
+
+
+def test_market_service_refreshes_stale_cached_data():
+    stored_rows = [
+        {
+            "date": date(2026, 9, 24),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
+            "volume": 100000,
+            "adjusted_close": Decimal(1245),
+            "source": "alpha_vantage",
+            "retrieved_at": datetime(2026, 9, 25, tzinfo=UTC),
+        }
+    ]
+
+    data_service = FakeDataService()
+    repository = FakeRepository(stored_rows)
+    service = MarketService(data_service, repository)
+
+    def fake_ingest(*args, **kwargs):
+        repository.stored_rows[0]["close"] = Decimal(1260)
+        repository.stored_rows[0]["retrieved_at"] = datetime.now(UTC)
+        return 1
+
+    with patch(
+        "src.data.market_service.ingest_price_history",
+        side_effect=fake_ingest,
+    ) as mock_ingest:
+        result = service.get_price_history(
+            "RELIANCE:BSE",
+            date(2026, 9, 24),
+            date(2026, 9, 24),
+        )
+
+    mock_ingest.assert_called_once()
+    assert result[0].close == Decimal(1260)
+
+
+def test_market_service_returns_cached_data_when_stale_refresh_fails():
+    stored_rows = [
+        {
+            "date": date(2026, 9, 24),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
+            "volume": 100000,
+            "adjusted_close": Decimal(1245),
+            "source": "alpha_vantage",
+            "retrieved_at": datetime(2026, 9, 25, tzinfo=UTC),
+        }
+    ]
+
+    data_service = FakeDataService()
+    repository = FakeRepository(stored_rows)
+    service = MarketService(data_service, repository)
+
+    def provider_refresh_failure(*args, **kwargs):
+        try:
+            raise TemporaryProviderError("Provider unavailable")
+        except TemporaryProviderError as provider_error:
+            raise RuntimeError(
+                "All providers failed for price_history"
+            ) from provider_error
+
+    with patch(
+        "src.data.market_service.ingest_price_history",
+        side_effect=provider_refresh_failure,
+    ) as mock_ingest:
+        result = service.get_price_history(
+            "RELIANCE:BSE",
+            date(2026, 9, 24),
+            date(2026, 9, 24),
+        )
+
+    mock_ingest.assert_called_once()
+    assert len(result) == 1
+    assert result[0].close == Decimal(1245)
+
+
+def test_market_service_refreshes_cache_with_missing_retrieval_timestamp():
+    stored_rows = [
+        {
+            "date": date(2026, 9, 24),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
+            "volume": 100000,
+            "adjusted_close": Decimal(1245),
+            "source": "alpha_vantage",
+            "retrieved_at": None,
+        }
+    ]
+
+    data_service = FakeDataService()
+    repository = FakeRepository(stored_rows)
+    service = MarketService(data_service, repository)
+
+    def fake_ingest(*args, **kwargs):
+        repository.stored_rows[0]["retrieved_at"] = datetime.now(UTC)
+        repository.stored_rows[0]["close"] = Decimal(1270)
+        return 1
+
+    with patch(
+        "src.data.market_service.ingest_price_history",
+        side_effect=fake_ingest,
+    ) as mock_ingest:
+        result = service.get_price_history(
+            "RELIANCE:BSE",
+            date(2026, 9, 24),
+            date(2026, 9, 24),
+        )
+
+    mock_ingest.assert_called_once()
+    assert result[0].close == Decimal(1270)
+
+
+def test_market_service_propagates_unrelated_refresh_runtime_error():
+    stored_rows = [
+        {
+            "date": date(2026, 9, 24),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
+            "volume": 100000,
+            "adjusted_close": Decimal(1245),
+            "source": "alpha_vantage",
+            "retrieved_at": datetime(2026, 9, 25, tzinfo=UTC),
+        }
+    ]
+
+    service = MarketService(
+        FakeDataService(),
+        FakeRepository(stored_rows),
+    )
+
+    with (
+        patch(
+            "src.data.market_service.ingest_price_history",
+            side_effect=RuntimeError("Unexpected application failure"),
+        ),
+        pytest.raises(RuntimeError, match="Unexpected application failure"),
+    ):
+        service.get_price_history(
+            "RELIANCE:BSE",
+            date(2026, 9, 24),
+            date(2026, 9, 24),
+        )
+
+
+def test_market_service_propagates_database_read_error():
+    stored_rows = [
+        {
+            "date": date(2026, 9, 24),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
+            "volume": 100000,
+            "adjusted_close": Decimal(1245),
+            "source": "alpha_vantage",
+            "retrieved_at": datetime.now(UTC),
+        }
+    ]
+
+    repository = FakeRepository(stored_rows)
+    service = MarketService(FakeDataService(), repository)
+
+    with (
+        patch.object(
+            repository,
+            "get_price_history",
+            side_effect=RuntimeError("Database read failed"),
+        ),
+        pytest.raises(RuntimeError, match="Database read failed"),
+    ):
+        service.get_price_history(
+            "RELIANCE:BSE",
+            date(2026, 9, 24),
+            date(2026, 9, 24),
+        )
+
+
+def test_market_service_refreshes_future_dated_cache_timestamp():
+    stored_rows = [
+        {
+            "date": date(2026, 9, 24),
+            "open": Decimal(1238),
+            "high": Decimal(1250),
+            "low": Decimal(1230),
+            "close": Decimal(1245),
+            "volume": 100000,
+            "adjusted_close": Decimal(1245),
+            "source": "alpha_vantage",
+            "retrieved_at": datetime.now(UTC) + timedelta(days=2),
+        }
+    ]
+
+    repository = FakeRepository(stored_rows)
+    service = MarketService(FakeDataService(), repository)
+
+    def fake_ingest(*args, **kwargs):
+        repository.stored_rows[0]["close"] = Decimal(1290)
+        repository.stored_rows[0]["retrieved_at"] = datetime.now(UTC)
+        return 1
+
+    with patch(
+        "src.data.market_service.ingest_price_history",
+        side_effect=fake_ingest,
+    ) as mock_ingest:
+        result = service.get_price_history(
+            "RELIANCE:BSE",
+            date(2026, 9, 24),
+            date(2026, 9, 24),
+        )
+
+    mock_ingest.assert_called_once()
+    assert result[0].close == Decimal(1290)

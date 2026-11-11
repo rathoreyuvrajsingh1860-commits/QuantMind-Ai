@@ -131,6 +131,8 @@ def test_research_service_builds_market_research():
 
     assert len(result.evidence) == 2
     assert result.evidence[0].source == "test-provider"
+    assert result.evidence[0].date == date(2026, 1, 1)
+    assert result.evidence[1].date == date(2026, 6, 1)
 
 
 def test_research_service_rejects_ambiguous_unqualified_symbol_with_whitespace():

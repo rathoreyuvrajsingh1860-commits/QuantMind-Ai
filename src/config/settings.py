@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     twelve_data_api_key: str = ""
     financial_data_provider_fallbacks: str = ""
 
+    market_data_freshness_hours: int = 24
+
     secret_key: str = ""
 
     log_level: str = "INFO"

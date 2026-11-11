@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import MarketChart, { type MarketBar } from "@/components/MarketChart";
 
 type Evidence = {
+  date: string | null;
   source: string;
 
   source_url: string | null;
@@ -836,7 +837,7 @@ export default function Home() {
                             ) : null}
 
                             <span className="text-[10px] text-black/30">
-                              {formatDate(item.description.slice(-10))}
+                              {item.date ? formatDate(item.date) : "Date unavailable"}
                             </span>
                           </div>
                         </div>

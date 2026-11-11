@@ -40,6 +40,25 @@ class FakeMarketService:
             currency="INR",
         )
 
+    def get_price_quality_report(self, symbol: str, start: date, end: date):
+        if self.error:
+            raise self.error
+        return {
+            "symbol": "RELIANCE.BSE",
+            "exchange": "BSE",
+            "start": start,
+            "end": end,
+            "status": "healthy",
+            "observation_count": 1,
+            "distinct_dates": 1,
+            "expected_sessions": 1,
+            "missing_sessions": 0,
+            "calendar_available": True,
+            "latest_retrieved_at": datetime(2026, 9, 25),
+            "latest_data_age_hours": 1.0,
+            "findings": [],
+        }
+
     def get_price_history(
         self,
         symbol: str,
@@ -124,6 +143,32 @@ def test_get_market_prices(install_market_service):
     assert data["data"][0]["source"] == "test_provider"
 
 
+def test_get_market_price_quality(install_market_service):
+    service = FakeMarketService()
+    install_market_service(service)
+
+    response = client.get(
+        "/api/market/RELIANCE:BSE/quality?start=2026-09-24&end=2026-09-24"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["symbol"] == "RELIANCE.BSE"
+    assert data["status"] == "healthy"
+    assert data["observation_count"] == 1
+    assert data["missing_sessions"] == 0
+    assert data["findings"] == []
+    assert service.closed is True
+
+
+def test_get_market_price_quality_rejects_invalid_date_range():
+    response = client.get(
+        "/api/market/RELIANCE:BSE/quality?start=2026-09-25&end=2026-09-24"
+    )
+
+    assert response.status_code == 400
+
+
 def test_get_market_prices_rejects_invalid_date_range():
     response = client.get(
         "/api/market/RELIANCE:BSE/prices?start=2026-09-24&end=2026-09-01"
@@ -139,6 +184,7 @@ def test_get_market_prices_rejects_invalid_date_range():
     ("path", "method"),
     [
         ("/api/market/RELIANCE:BSE/profile", "profile"),
+        ("/api/market/RELIANCE:BSE/quality?start=2026-09-01&end=2026-09-24", "quality"),
         (
             "/api/market/RELIANCE:BSE/prices?start=2026-09-01&end=2026-09-24",
             "prices",

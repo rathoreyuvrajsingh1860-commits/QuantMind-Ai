@@ -1,4 +1,5 @@
-from datetime import date, datetime
+from datetime import date as Date
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,18 +16,20 @@ class ResearchEntity(BaseModel):
     industry: str | None = None
     currency: str | None = None
 
+
 class PriceHistoryPoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    date: date
+    date: Date
     close: Decimal
     source: str
+
 
 class MarketResearch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    start: date
-    end: date
+    start: Date
+    end: Date
     observations: int
     latest_close: Decimal | None = None
     first_close: Decimal | None = None
@@ -41,6 +44,7 @@ class MarketResearch(BaseModel):
 class ResearchEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    date: Date | None = None
     source: str
     source_url: str | None = None
     retrieved_at: datetime | None = None
@@ -63,10 +67,10 @@ class ResearchNews(BaseModel):
 class ResearchCoverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    requested_start: date
-    requested_end: date
-    evidence_start: date | None = None
-    evidence_end: date | None = None
+    requested_start: Date
+    requested_end: Date
+    evidence_start: Date | None = None
+    evidence_end: Date | None = None
     observations: int
 
 
@@ -81,6 +85,8 @@ class ResearchResult(BaseModel):
     limitations: list[str]
     news: list[ResearchNews] = Field(default_factory=list)
     price_history: list[PriceHistoryPoint] = Field(default_factory=list)
+
+
 class PersistedResearch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

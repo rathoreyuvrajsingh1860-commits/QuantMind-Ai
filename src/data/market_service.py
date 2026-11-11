@@ -1,9 +1,15 @@
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
+from src.config.settings import settings
+from src.data.errors import ProviderError
 from src.data.ingestion import ingest_price_history
 from src.data.models import CompanyProfile, PriceBar
+from src.data.quality import build_price_quality_report
 from src.data.service import DataService
-from src.data.trading_calendar import get_expected_trading_dates
+from src.data.trading_calendar import (
+    UnsupportedTradingCalendarError,
+    get_expected_trading_dates,
+)
 from src.storage.repositories.market import MarketRepository
 
 
@@ -20,6 +26,31 @@ class MarketService:
 
     def get_profile(self, symbol: str) -> CompanyProfile:
         return self.data_service.get_company_profile(symbol)
+
+    def get_price_quality_report(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+    ) -> dict:
+        """Assess stored price data without triggering ingestion."""
+        profile = self.get_profile(symbol)
+        instrument_id = self.repository.get_instrument_id(
+            profile.symbol,
+            profile.exchange,
+        )
+        rows = (
+            self.repository.get_price_history(instrument_id, start, end)
+            if instrument_id is not None
+            else []
+        )
+        return build_price_quality_report(
+            profile.symbol,
+            profile.exchange,
+            start,
+            end,
+            rows,
+        )
 
     def _rows_to_price_bars(
         self,
@@ -50,6 +81,7 @@ class MarketService:
         end: date,
     ) -> list[PriceBar]:
         profile = self.get_profile(symbol)
+        cached_calendar_fallback = None
 
         instrument_id = self.repository.get_instrument_id(
             profile.symbol,
@@ -64,10 +96,19 @@ class MarketService:
             if coverage is not None:
                 earliest, latest = coverage
 
-                expected_dates = get_expected_trading_dates(
-                    start,
-                    end,
-                )
+                try:
+                    expected_dates = get_expected_trading_dates(
+                        start,
+                        end,
+                        profile.exchange,
+                    )
+                except UnsupportedTradingCalendarError:
+                    expected_dates = None
+                    cached_calendar_fallback = self.repository.get_price_history(
+                        instrument_id,
+                        start,
+                        end,
+                    )
 
                 if expected_dates:
                     latest_expected = expected_dates[-1]
@@ -82,14 +123,14 @@ class MarketService:
                             instrument_id,
                             coverage_start,
                             min(end, latest),
+                            profile.exchange,
                         )
                         if coverage_start <= min(end, latest)
                         else []
                     )
 
-                    # If the stored data reaches the latest expected trading
-                    # day and has no internal gaps, reuse it without another
-                    # provider request.
+                    # Complete coverage can be reused only while the latest
+                    # expected trading day's data remains fresh.
                     if latest >= latest_expected and not missing_dates:
                         stored = self.repository.get_price_history(
                             instrument_id,
@@ -98,18 +139,76 @@ class MarketService:
                         )
 
                         if stored:
-                            return self._rows_to_price_bars(
-                                symbol,
-                                stored,
+                            retrieved_at = (
+                                self.repository.get_latest_price_retrieved_at(
+                                    instrument_id,
+                                    latest_expected,
+                                )
                             )
 
-        # Coverage is absent, incomplete, or contains an expected gap.
-        ingest_price_history(
-            self.data_service,
-            symbol,
-            start,
-            end,
-        )
+                            if retrieved_at is not None:
+                                if retrieved_at.tzinfo is None:
+                                    retrieved_at = retrieved_at.replace(tzinfo=UTC)
+
+                                age = datetime.now(UTC) - retrieved_at
+                                freshness_limit = timedelta(
+                                    hours=settings.market_data_freshness_hours
+                                )
+
+                                if timedelta(0) <= age <= freshness_limit:
+                                    return self._rows_to_price_bars(
+                                        symbol,
+                                        stored,
+                                    )
+
+                            # Stale or missing retrieval timestamp: refresh,
+                            # but retain the stored data if this refresh fails.
+                            try:
+                                ingest_price_history(
+                                    self.data_service,
+                                    symbol,
+                                    start,
+                                    end,
+                                )
+                            except ProviderError:
+                                return self._rows_to_price_bars(
+                                    symbol,
+                                    stored,
+                                )
+                            except RuntimeError as exc:
+                                if isinstance(exc.__cause__, ProviderError):
+                                    return self._rows_to_price_bars(
+                                        symbol,
+                                        stored,
+                                    )
+                                raise
+
+                            refreshed = self.repository.get_price_history(
+                                instrument_id,
+                                start,
+                                end,
+                            )
+                            return self._rows_to_price_bars(
+                                symbol,
+                                refreshed or stored,
+                            )
+
+        # Provider access remains available when no verified calendar exists.
+        try:
+            ingest_price_history(
+                self.data_service,
+                symbol,
+                start,
+                end,
+            )
+        except ProviderError:
+            if cached_calendar_fallback:
+                return self._rows_to_price_bars(symbol, cached_calendar_fallback)
+            raise
+        except RuntimeError as exc:
+            if cached_calendar_fallback and isinstance(exc.__cause__, ProviderError):
+                return self._rows_to_price_bars(symbol, cached_calendar_fallback)
+            raise
 
         instrument_id = self.repository.get_instrument_id(
             profile.symbol,

@@ -167,6 +167,7 @@ def get_research(research_run_id: str) -> ResearchResponse:
 
     evidence = [
         {
+            "date": item["metadata"].get("date"),
             "source": item["metadata"]["source"],
             "source_url": item["source_url"],
             "retrieved_at": item["retrieved_at"],

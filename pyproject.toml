@@ -17,6 +17,7 @@ dependencies = [
     "sqlalchemy>=2.0,<3.0",
     "httpx>=0.28,<1.0",
     "yfinance>=0.2.54,<1.0",
+    "exchange-calendars==4.13.2",
 ]
 
 [tool.setuptools]

@@ -1,5 +1,9 @@
-from datetime import date, datetime
+from __future__ import annotations
+
+from datetime import date as DateType
+from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -19,7 +23,7 @@ class MarketProfileResponse(BaseModel):
 class PriceBarResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    date: date
+    date: DateType
     open: Decimal
     high: Decimal
     low: Decimal
@@ -32,7 +36,31 @@ class PriceBarResponse(BaseModel):
 
 class PriceHistoryResponse(BaseModel):
     symbol: str
-    start: date
-    end: date
+    start: DateType
+    end: DateType
     count: int
     data: list[PriceBarResponse]
+
+
+class PriceQualityFindingResponse(BaseModel):
+    severity: Literal["error", "warning", "info"]
+    code: str
+    message: str
+    date: DateType | None = None
+    source: str | None = None
+
+
+class PriceQualityResponse(BaseModel):
+    symbol: str
+    exchange: str | None = None
+    start: DateType
+    end: DateType
+    status: Literal["healthy", "warning", "error", "no_data"]
+    observation_count: int
+    distinct_dates: int
+    expected_sessions: int | None = None
+    missing_sessions: int | None = None
+    calendar_available: bool
+    latest_retrieved_at: datetime | None = None
+    latest_data_age_hours: float | None = None
+    findings: list[PriceQualityFindingResponse]

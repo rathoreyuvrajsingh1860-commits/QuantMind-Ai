@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 from src.api.schemas import (
     MarketProfileResponse,
     PriceHistoryResponse,
+    PriceQualityResponse,
 )
 from src.data.errors import ProviderError
 from src.data.market_service import MarketService
@@ -106,6 +107,32 @@ def get_market_profile(symbol: str) -> MarketProfileResponse:
             industry=profile.industry,
             currency=profile.currency,
         )
+    except (ProviderError, ValueError, LookupError, RuntimeError) as exc:
+        _raise_market_http_error(exc)
+    finally:
+        service.close()
+
+
+@router.get(
+    "/{symbol:path}/quality",
+    response_model=PriceQualityResponse,
+)
+def get_market_price_quality(
+    symbol: str,
+    start: date = Query(...),
+    end: date = Query(...),
+) -> PriceQualityResponse:
+    """Return a read-only quality report for stored historical prices."""
+    if start > end:
+        raise HTTPException(
+            status_code=400,
+            detail="start date must be before or equal to end date",
+        )
+
+    service = create_market_service()
+    try:
+        report = service.get_price_quality_report(symbol, start, end)
+        return PriceQualityResponse(**report)
     except (ProviderError, ValueError, LookupError, RuntimeError) as exc:
         _raise_market_http_error(exc)
     finally:

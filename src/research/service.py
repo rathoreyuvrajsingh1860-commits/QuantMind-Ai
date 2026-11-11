@@ -1,4 +1,3 @@
-
 from datetime import UTC, date, datetime, timedelta
 
 from src.data.market_service import MarketService
@@ -135,6 +134,7 @@ class ResearchService:
 
         evidence = [
             ResearchEvidence(
+                date=bar.date,
                 source=bar.source,
                 source_url=bar.source_url,
                 retrieved_at=bar.retrieved_at,
