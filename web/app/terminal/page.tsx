@@ -28,6 +28,30 @@ type PriceHistory = {
   data: PriceBar[];
 };
 
+type PriceQualityFinding = {
+  severity: "error" | "warning" | "info";
+  code: string;
+  message: string;
+  date: string | null;
+  source: string | null;
+};
+
+type PriceQuality = {
+  symbol: string;
+  exchange: string | null;
+  start: string;
+  end: string;
+  status: "healthy" | "warning" | "error" | "no_data";
+  observation_count: number;
+  distinct_dates: number;
+  expected_sessions: number | null;
+  missing_sessions: number | null;
+  calendar_available: boolean;
+  latest_retrieved_at: string | null;
+  latest_data_age_hours: number | null;
+  findings: PriceQualityFinding[];
+};
+
 type InstrumentSearchResult = MarketProfile;
 
 const API_URL = "http://localhost:8000/api/market";
@@ -94,6 +118,9 @@ export default function MarketTerminalPage() {
   const [end, setEnd] = useState(() => isoDate(new Date()));
   const [profile, setProfile] = useState<MarketProfile | null>(null);
   const [history, setHistory] = useState<PriceHistory | null>(null);
+  const [quality, setQuality] = useState<PriceQuality | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualityError, setQualityError] = useState("");
   const [mode, setMode] = useState<"candles" | "line">("candles");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -170,6 +197,9 @@ export default function MarketTerminalPage() {
 
     setLoading(true);
     setError("");
+    setQuality(null);
+    setQualityLoading(true);
+    setQualityError("");
 
     try {
       const encodedSymbol = encodeURIComponent(symbol.trim());
@@ -202,9 +232,34 @@ export default function MarketTerminalPage() {
       setProfile(profilePayload as MarketProfile);
       setHistory(historyPayload as PriceHistory);
       setSymbol(symbol.trim());
+
+      try {
+        const qualityResponse = await fetch(
+          `${API_URL}/${encodedSymbol}/quality?${query.toString()}`,
+          { cache: "no-store" },
+        );
+        const qualityPayload = await qualityResponse.json().catch(() => null);
+
+        if (!qualityResponse.ok) {
+          throw new Error(
+            qualityPayload?.detail ??
+              `Quality report request failed (${qualityResponse.status}).`,
+          );
+        }
+
+        setQuality(qualityPayload as PriceQuality);
+      } catch (qualityErr) {
+        setQuality(null);
+        setQualityError(
+          qualityErr instanceof Error
+            ? qualityErr.message
+            : "Unable to load the data quality report.",
+        );
+      }
     } catch (err) {
       setProfile(null);
       setHistory(null);
+      setQuality(null);
       setError(
         err instanceof Error
           ? err.message
@@ -212,6 +267,7 @@ export default function MarketTerminalPage() {
       );
     } finally {
       setLoading(false);
+      setQualityLoading(false);
     }
   }, [symbol, start, end]);
 
@@ -538,6 +594,171 @@ export default function MarketTerminalPage() {
                   height={440}
                 />
               </div>
+
+              <section
+                aria-label="Market data quality"
+                className="mt-6 rounded-xl border border-black/[0.08] bg-[#fafaf8] p-4 sm:p-5"
+              >
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/40">
+                      Evidence before trust
+                    </p>
+                    <h3 className="mt-1 text-sm font-semibold">
+                      Data quality
+                    </h3>
+                    <p className="mt-1 text-xs text-black/45">
+                      Validation of stored historical observations for this
+                      date range.
+                    </p>
+                  </div>
+                  {quality && (
+                    <span
+                      className={`w-fit rounded-full px-3 py-1 text-[11px] font-medium ${
+                        quality.status === "healthy"
+                          ? "bg-[#e8f0eb] text-[#416650]"
+                          : quality.status === "error"
+                            ? "bg-red-50 text-red-700"
+                            : quality.status === "warning"
+                              ? "bg-amber-50 text-amber-800"
+                              : "bg-black/[0.06] text-black/50"
+                      }`}
+                    >
+                      {quality.status.replace("_", " ")}
+                    </span>
+                  )}
+                </div>
+
+                {qualityLoading ? (
+                  <p className="mt-5 text-xs text-black/45">
+                    Assessing stored market data…
+                  </p>
+                ) : qualityError ? (
+                  <p role="status" className="mt-5 text-xs text-amber-800">
+                    Quality report unavailable: {qualityError}
+                  </p>
+                ) : quality ? (
+                  <>
+                    <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                      <div>
+                        <p className="text-[10px] text-black/40">
+                          Observations
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tabular-nums">
+                          {quality.observation_count}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-black/40">
+                          Distinct dates
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tabular-nums">
+                          {quality.distinct_dates}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-black/40">
+                          Expected sessions
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tabular-nums">
+                          {quality.expected_sessions ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-black/40">
+                          Missing sessions
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tabular-nums">
+                          {quality.missing_sessions ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-black/40">
+                          Data age
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tabular-nums">
+                          {quality.latest_data_age_hours == null
+                            ? "—"
+                            : `${quality.latest_data_age_hours.toFixed(1)}h`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-2 border-t border-black/[0.07] pt-4 text-xs sm:grid-cols-2">
+                      <p className="text-black/55">
+                        <span className="text-black/35">Exchange calendar: </span>
+                        {quality.calendar_available
+                          ? "Available"
+                          : "Unavailable"}
+                      </p>
+                      <p className="text-black/55">
+                        <span className="text-black/35">Latest retrieval: </span>
+                        {quality.latest_retrieved_at
+                          ? formatTimestamp(quality.latest_retrieved_at)
+                          : "Unavailable"}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 border-t border-black/[0.07] pt-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-xs font-semibold">
+                          Quality findings
+                        </h4>
+                        <span className="text-[10px] text-black/40">
+                          {quality.findings.length} reported
+                        </span>
+                      </div>
+
+                      {quality.findings.length === 0 ? (
+                        <p className="mt-3 text-xs text-black/45">
+                          No quality findings were reported for this period.
+                        </p>
+                      ) : (
+                        <ul className="mt-3 space-y-2">
+                          {quality.findings.map((finding, index) => (
+                            <li
+                              key={`${finding.code}-${finding.date ?? "range"}-${index}`}
+                              className="rounded-lg border border-black/[0.06] bg-white px-3 py-3"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                                    finding.severity === "error"
+                                      ? "bg-red-50 text-red-700"
+                                      : finding.severity === "warning"
+                                        ? "bg-amber-50 text-amber-800"
+                                        : "bg-blue-50 text-blue-700"
+                                  }`}
+                                >
+                                  {finding.severity}
+                                </span>
+                                <span className="font-mono text-[10px] text-black/35">
+                                  {finding.code}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-black/70">
+                                {finding.message}
+                              </p>
+                              {(finding.date || finding.source) && (
+                                <p className="mt-2 text-[10px] text-black/40">
+                                  {[finding.date && formatDate(finding.date), finding.source]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-5 text-xs text-black/45">
+                    No quality report is available for this instrument and
+                    period.
+                  </p>
+                )}
+              </section>
 
               <div className="mt-6 grid gap-4 border-t border-black/[0.07] pt-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div>

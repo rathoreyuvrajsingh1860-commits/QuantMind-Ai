@@ -9,11 +9,63 @@ EXCHANGE_CALENDARS = {
     "NYSE": "XNYS",
 }
 
+NSE_EQUITY_HOLIDAYS = {
+    2025: frozenset(
+        date(2025, month, day)
+        for month, day in (
+            (2, 26),
+            (3, 14),
+            (3, 31),
+            (4, 10),
+            (4, 14),
+            (4, 18),
+            (5, 1),
+            (8, 15),
+            (8, 27),
+            (10, 2),
+            (10, 22),
+            (11, 5),
+            (12, 25),
+        )
+    ),
+    2026: frozenset(
+        date(2026, month, day)
+        for month, day in (
+            (1, 15),
+            (1, 26),
+            (3, 3),
+            (3, 26),
+            (3, 31),
+            (4, 3),
+            (4, 14),
+            (5, 1),
+            (5, 28),
+            (6, 26),
+            (9, 14),
+            (10, 2),
+            (10, 20),
+            (11, 10),
+            (11, 24),
+            (12, 25),
+        )
+    ),
+}
+
+NSE_EQUITY_SPECIAL_SESSIONS = frozenset(
+    {
+        date(2025, 10, 21),
+        date(2026, 11, 8),
+    }
+)
+
 CALENDAR_EXCHANGE_ALIASES = {
     "INDIA/BOMBAY": "BSE",
     "BOMBAY STOCK EXCHANGE": "BSE",
     "BSE INDIA": "BSE",
     "XBOM": "BSE",
+    "NSE INDIA": "NSE",
+    "NATIONAL STOCK EXCHANGE OF INDIA": "NSE",
+    "XNSE": "NSE",
     "NEW YORK STOCK EXCHANGE": "NYSE",
     "XNYS": "NYSE",
 }
@@ -44,6 +96,26 @@ def get_expected_trading_dates(
         normalized_exchange,
         normalized_exchange,
     )
+
+    if calendar_exchange == "NSE":
+        if start.year < 2025 or end.year > 2026:
+            raise UnsupportedTradingCalendarError(
+                "NSE equities calendar is verified only for 2025-2026."
+            )
+
+        holidays = set().union(
+            *(NSE_EQUITY_HOLIDAYS[year] for year in range(start.year, end.year + 1))
+        )
+
+        dates: list[date] = []
+        current = start
+        while current <= end:
+            if current in NSE_EQUITY_SPECIAL_SESSIONS or (
+                is_weekday(current) and current not in holidays
+            ):
+                dates.append(current)
+            current += timedelta(days=1)
+        return dates
 
     calendar_code = EXCHANGE_CALENDARS.get(calendar_exchange)
 
